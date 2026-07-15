@@ -209,7 +209,10 @@
                 <div class="flex items-center gap-6">
                     <div class="flex flex-col items-end">
                         <div class="flex items-center gap-2">
-                            <span id="loc-display" class="text-xs font-bold text-green-800" data-en="Locating..." data-hi="स्थान पता चल रहा है...">Locating...</span>
+                            <div id="loc-display" class="flex items-center gap-2 text-xs font-bold text-green-800">
+                                <span id="loc-label" data-en="Locating..." data-hi="स्थान पता चल रहा है...">Locating...</span>
+                                <span id="loc-coords" class="text-[10px] ml-2 text-green-700"></span>
+                            </div>
                             <button id="change-location-btn" class="text-xs text-green-600 hover:text-green-800" title="Change Location">
                                 <i class="fas fa-map-marker-alt"></i>
                             </button>
@@ -304,19 +307,6 @@
                         </div>
                     </div>
 
-                    <div id="stats-modal" class="stats-modal">
-                        <div class="stats-modal-header">
-                            <span data-en="SYSTEM_LOGS // STATS FOR NERDS" data-hi="सिस्टम_लॉग्स // विशेषज्ञों के लिए आंकडे">SYSTEM_LOGS // STATS FOR NERDS</span>
-                            <button id="close-stats" onclick="document.getElementById('stats-modal').classList.remove('active')">✕</button>
-                        </div>
-                        <div class="stats-modal-content">
-                            <div id="ai-logs">
-                                <div data-en="> Initializing environment request..." data-hi="> पर्यावरण अनुरोध शुरू कर रहे हैं...">> Initializing environment request...</div>
-                            </div>
-                            <div class="mt-2"> >> <span class="animate-pulse">_</span></div>
-                        </div>
-                    </div>
-                    <button id="show-stats" class="fixed bottom-4 right-4 px-3 py-2 bg-zinc-900 text-green-400 text-xs font-mono border border-green-400/50 rounded hover:bg-zinc-800 cursor-pointer z-50" onclick="document.getElementById('stats-modal').classList.add('active')" data-en="stats for nerds" data-hi="विशेषज्ञों के लिए आंकडे">stats for nerds</button>
                 </section>
 
                 <!-- SPECTRAL VISION PAGE -->
@@ -325,7 +315,6 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div class="lg:col-span-2 relative">
                             <video id="video-feed" autoplay muted playsinline></video>
-                            <div class="ai-overlay">NEURAL_SCAN_V2 // NDVI_ACTIVE // ISO_800</div>
                             <canvas id="vision-canvas" class="hidden"></canvas>
                         </div>
                         <div class="flex flex-col gap-6">
@@ -395,6 +384,20 @@
                 <!-- DATA PAGE -->
                 <section id="data" class="page">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="glass-card p-6">
+                            <h3 class="font-bold text-xl mb-4" data-en="Account" data-hi="खाता">Account</h3>
+                            <div class="space-y-3">
+                                <div id="account-status" class="text-sm text-gray-700" data-en="No account yet" data-hi="अभी कोई खाता नहीं">No account yet</div>
+                                <input type="text" id="account-name" class="ag-input" data-en-placeholder="Your name" data-hi-placeholder="आपका नाम">
+                                <input type="email" id="account-email" class="ag-input" data-en-placeholder="Email address" data-hi-placeholder="ईमेल पता">
+                                <input type="password" id="account-password" class="ag-input" data-en-placeholder="Password" data-hi-placeholder="पासवर्ड">
+                                <div class="flex gap-2">
+                                    <button id="account-save-btn" class="ag-btn" data-en="Create Account" data-hi="खाता बनाएं">Create Account</button>
+                                    <button id="account-logout-btn" class="ag-btn bg-gray-700" data-en="Logout" data-hi="लॉगआउट">Logout</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="glass-card p-6">
                             <h3 class="font-bold text-xl mb-6" data-en="Crop Management" data-hi="फसल प्रबंधन">Crop Management</h3>
                             <div class="space-y-4">
@@ -514,7 +517,7 @@
           'stats for nerds': 'विशेषज्ञों के लिए आँकड़े',
           'Initializing environment request...': 'पर्यावरण अनुरोध शुरू कर रहे हैं...',
           '⚠️ Location access denied. Using default location...': '⚠️ स्थान पहुँच अस्वीकृत। डिफ़ॉल्ट स्थान उपयोग किया जा रहा है...',
-          'Set your Groq API key in the source code (line 1042 of the script).': 'अपने सोर्स कोड में Groq API कुंजी सेट करें (स्क्रिप्ट की पंक्ति 1042).',
+          'Set your Groq API key in the source code (line 1105 of the script).': 'अपने सोर्स कोड में Groq API कुंजी सेट करें (स्क्रिप्ट की पंक्ति 1105).',
           'Offline Mode': 'ऑफ़लाइन मोड',
           'Camera disconnected.': 'कैमरा डिस्कनेक्ट हुआ।',
           'Capturing frame and running neural analysis...': 'फ्रेम कैप्चर कर रहे हैं और न्यूरल विश्लेषण चला रहे हैं...',
@@ -529,6 +532,8 @@
       let currentLang = 'en';
       let lastWeatherData = null;
       let lastLocationLabel = null;
+      let lastLocationCoords = { lat: null, lon: null };
+      let account = JSON.parse(localStorage.getItem('terraAccount') || 'null');
       let farmerCrops = JSON.parse(localStorage.getItem('farmerCrops') || '[]');
       let cropNotifications = JSON.parse(localStorage.getItem('cropNotifications') || '[]');
       let activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]');
@@ -646,6 +651,7 @@
 
       function updateUILanguage() {
         document.querySelectorAll('[data-en][data-hi], input[data-en-placeholder], input[data-hi-placeholder], textarea[data-en-placeholder], textarea[data-hi-placeholder]').forEach(el => {
+          if (el.id === 'loc-label' && lastLocationLabel) return;
           if (el.hasAttribute('data-en') && el.hasAttribute('data-hi')) {
             el.innerText = el.getAttribute(`data-${currentLang}`);
           }
@@ -658,8 +664,51 @@
         });
       }
 
+      function renderLocationDisplay(placeName, lat, lon) {
+        const labelEl = document.getElementById('loc-label');
+        const coordsEl = document.getElementById('loc-coords');
+        if (labelEl) {
+          labelEl.innerText = placeName || labelEl.getAttribute(`data-${currentLang}`) || (currentLang === 'hi' ? 'स्थान पता चल रहा है...' : 'Locating...');
+        }
+        if (coordsEl && lat != null && lon != null) {
+          coordsEl.innerText = `(${lat.toFixed(2)}°, ${lon.toFixed(2)}°E)`;
+        } else if (coordsEl) {
+          coordsEl.innerText = '';
+        }
+      }
+
+      function renderAccountPanel() {
+        const statusEl = document.getElementById('account-status');
+        const nameInput = document.getElementById('account-name');
+        const emailInput = document.getElementById('account-email');
+        const passwordInput = document.getElementById('account-password');
+        const saveBtn = document.getElementById('account-save-btn');
+        const logoutBtn = document.getElementById('account-logout-btn');
+        if (!statusEl || !nameInput || !emailInput || !passwordInput) return;
+
+        if (account) {
+          statusEl.textContent = currentLang === 'hi' ? `खाता सक्रिय: ${account.name || 'किसान'}` : `Signed in as ${account.name || 'Farmer'}`;
+          nameInput.value = account.name || '';
+          emailInput.value = account.email || '';
+          passwordInput.value = account.password || '';
+          if (saveBtn) saveBtn.textContent = currentLang === 'hi' ? 'खाता अपडेट करें' : 'Update Account';
+          if (logoutBtn) logoutBtn.style.display = '';
+        } else {
+          statusEl.textContent = currentLang === 'hi' ? 'अभी कोई खाता नहीं' : 'No account yet';
+          nameInput.value = '';
+          emailInput.value = '';
+          passwordInput.value = '';
+          if (saveBtn) saveBtn.textContent = currentLang === 'hi' ? 'खाता बनाएं' : 'Create Account';
+          if (logoutBtn) logoutBtn.style.display = 'none';
+        }
+      }
+
       function refreshDynamicLanguage() {
         updateUILanguage();
+        renderAccountPanel();
+        if (lastLocationLabel) {
+          renderLocationDisplay(lastLocationLabel, lastLocationCoords.lat, lastLocationCoords.lon);
+        }
         if (lastWeatherData) renderWeather(lastWeatherData, lastLocationLabel);
         renderCrops();
         renderNotifications();
@@ -708,16 +757,30 @@
         localStorage.setItem('cropNotifications', JSON.stringify(cropNotifications));
         localStorage.setItem('lastWeatherData', JSON.stringify(lastWeatherData));
         localStorage.setItem('lastLocationLabel', lastLocationLabel || '');
+        localStorage.setItem('lastLocationCoords', JSON.stringify(lastLocationCoords));
+        if (account) {
+          localStorage.setItem('terraAccount', JSON.stringify(account));
+        }
       }
 
       function loadFromCache() {
         const cachedWeather = localStorage.getItem('lastWeatherData');
         const cachedLocation = localStorage.getItem('lastLocationLabel');
+        const cachedCoords = localStorage.getItem('lastLocationCoords');
+        const cachedAccount = localStorage.getItem('terraAccount');
         if (cachedWeather && cachedLocation) {
           lastWeatherData = JSON.parse(cachedWeather);
           lastLocationLabel = cachedLocation;
+          lastLocationCoords = cachedCoords ? JSON.parse(cachedCoords) : { lat: null, lon: null };
           renderWeather(lastWeatherData, lastLocationLabel);
+          if (lastLocationLabel) {
+            renderLocationDisplay(lastLocationLabel, lastLocationCoords.lat, lastLocationCoords.lon);
+          }
           addLog(translateDynamic('<i class="fas fa-database"></i> Data loaded from cache'));
+        }
+        if (cachedAccount) {
+          account = JSON.parse(cachedAccount);
+          renderAccountPanel();
         }
       }
 
@@ -1039,7 +1102,7 @@
       }
 
       const GROQ_API_KEY =
-        "YOUR_GROQ_API_KEY_HERE"; // Replace with your actual Groq API key for AI features
+        "YOUR_GROQ_KEY_HERE"; // Replace with your actual Groq API key for AI features
 
       const pageTitles = {
         ops: "Field Operations",
@@ -1072,6 +1135,7 @@
 
       function addLog(msg) {
         const logs = document.getElementById("ai-logs");
+        if (!logs) return;
         const div = document.createElement("div");
         div.textContent = translateDynamic(msg);
         logs.appendChild(div);
@@ -1173,21 +1237,32 @@
         chart.innerHTML = '';
         hoursEl.innerHTML = '';
         const probs = d.hourly.precipitation_probability.slice(0, 12);
-        const maxP = Math.max(...probs, 1);
-        probs.forEach((p, i) => {
-          const bar = document.createElement('div');
-          const color = p > 60 ? '#5b8dd9' : p > 30 ? '#8db4e8' : '#c8d9f0';
-          bar.style.cssText = `flex:1;border-radius:4px 4px 0 0;background:${color};height:${Math.max(4, (p / maxP) * 76)}px;transition:height 0.6s ease;`;
-          bar.title = `${p}%`;
-          chart.appendChild(bar);
-          const lbl = document.createElement('div');
-          lbl.style.cssText =
-            'flex:1;text-align:center;font-size:9px;color:#1b3022;';
+        const scaleLabels = [100, 80, 60, 40, 20];
+        const chartMarkup = `
+          <div class="flex h-24 w-full gap-2">
+            <div class="flex flex-col justify-between text-[9px] text-green-700/70 pr-1">
+              ${scaleLabels.map((label) => `<span>${label}</span>`).join('')}
+            </div>
+            <div class="relative flex-1 h-24">
+              ${scaleLabels.map((label) => `<div class="absolute left-0 right-0 border-t border-dashed border-green-900/20" style="top:${(100 - label) / 100 * 100}%"></div>`).join('')}
+              <div class="absolute inset-0 flex items-end gap-1 px-1">
+                ${probs.map((p) => {
+                  const color = p > 60 ? '#5b8dd9' : p > 30 ? '#8db4e8' : '#c8d9f0';
+                  const height = Math.max(4, (p / 100) * 76);
+                  return `<div class="flex-1 flex flex-col justify-end">
+                    <div class="w-full rounded-t-sm" style="height:${height}px;background:${color};transition:height 0.6s ease;" title="${p}%"></div>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+        chart.innerHTML = chartMarkup;
+        hoursEl.innerHTML = probs.map((_, i) => {
           const h = new Date();
           h.setHours(h.getHours() + i);
-          lbl.textContent = `${h.getHours()}${currentLang === 'hi' ? 'घं' : 'h'}`;
-          hoursEl.appendChild(lbl);
-        });
+          return `<div class="flex-1 text-center text-[9px] text-green-700">${h.getHours()}${currentLang === 'hi' ? 'घं' : 'h'}</div>`;
+        }).join('');
 
         addLog(
           translateDynamic(
@@ -1209,8 +1284,8 @@
           }
         }
 
-        document.getElementById("loc-display").innerHTML =
-          `${placeName} <span class="text-[10px] ml-2">(${lat.toFixed(2)}°, ${lon.toFixed(2)}°E)</span>`;
+        lastLocationCoords = { lat, lon };
+        renderLocationDisplay(placeName, lat, lon);
         addLog(
           translateDynamic(
             `Location acquired: ${placeName} (${lat.toFixed(2)}°, ${lon.toFixed(2)}°E)`,
@@ -1253,7 +1328,7 @@
         if (!GROQ_API_KEY || GROQ_API_KEY === "YOUR_GROQ_API_KEY_HERE")
           throw new Error(
             translateDynamic(
-              "Set your Groq API key in the source code (line 1042 of the script).",
+              "Set your Groq API key in the source code (line 1105 of the script).",
             ),
           );
         
@@ -1431,14 +1506,21 @@
       if (langToggleButton) {
         langToggleButton.addEventListener('click', toggleLanguage);
       }
+
+      const changeLocationButton = document.getElementById('change-location-btn');
+      if (changeLocationButton) {
+        changeLocationButton.addEventListener('click', () => changeLocation());
+      }
+
       updateUILanguage();
       loadFromCache();
       renderCrops();
       renderNotifications();
+      renderAccountPanel();
 
-      document.getElementById('add-crop-btn').addEventListener('click', async () => {
-        const cropName = document.getElementById('crop-name').value;
-        const plantDate = document.getElementById('plant-date').value;
+      async function handleAddCrop() {
+        const cropName = document.getElementById('crop-name').value.trim();
+        const plantDate = document.getElementById('plant-date').value.trim();
         if (cropName && plantDate) {
           await addCrop(cropName, plantDate);
           document.getElementById('crop-name').value = '';
@@ -1446,7 +1528,41 @@
         } else {
           showToast(translateDynamic('Please fill in all fields'), 'warning');
         }
-      });
+      }
+
+      const addCropButton = document.getElementById('add-crop-btn');
+      if (addCropButton) {
+        addCropButton.addEventListener('click', handleAddCrop);
+        addCropButton.onclick = handleAddCrop;
+      }
+
+      const saveAccountButton = document.getElementById('account-save-btn');
+      if (saveAccountButton) {
+        saveAccountButton.addEventListener('click', () => {
+          const name = document.getElementById('account-name').value.trim();
+          const email = document.getElementById('account-email').value.trim();
+          const password = document.getElementById('account-password').value;
+          if (!name || !email || !password) {
+            showToast(translateDynamic('Please fill in all account fields'), 'warning');
+            return;
+          }
+          account = { name, email, password };
+          localStorage.setItem('terraAccount', JSON.stringify(account));
+          saveToCache();
+          renderAccountPanel();
+          showToast(translateDynamic('Account saved'), 'success');
+        });
+      }
+
+      const logoutAccountButton = document.getElementById('account-logout-btn');
+      if (logoutAccountButton) {
+        logoutAccountButton.addEventListener('click', () => {
+          account = null;
+          localStorage.removeItem('terraAccount');
+          renderAccountPanel();
+          showToast(translateDynamic('Logged out'), 'info');
+        });
+      }
 
       let activeVoiceSession = null;
 
@@ -1457,18 +1573,64 @@
         button.innerHTML = '<i class="fas fa-microphone"></i>';
       }
 
+      function appendVoiceText(target, text) {
+        if (!target) return;
+        if (typeof target.value === 'string') {
+          target.value = target.value ? `${target.value} ${text}`.trim() : text;
+        } else {
+          target.textContent = target.textContent ? `${target.textContent} ${text}`.trim() : text;
+        }
+      }
+
       async function startVoiceInput(button, target) {
         if (activeVoiceSession && activeVoiceSession.button !== button) {
           resetVoiceButton(activeVoiceSession.button);
-          activeVoiceSession?.stream?.getTracks().forEach(track => track.stop());
+          if (activeVoiceSession.stream) activeVoiceSession.stream.getTracks().forEach(track => track.stop());
+          if (activeVoiceSession.recognition) activeVoiceSession.recognition.stop();
           activeVoiceSession = null;
         }
         if (activeVoiceSession) {
           if (activeVoiceSession.recorder && activeVoiceSession.recorder.state !== 'inactive') {
             activeVoiceSession.recorder.stop();
           }
+          if (activeVoiceSession.recognition) {
+            activeVoiceSession.recognition.stop();
+          }
           return;
         }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+          const recognition = new SpeechRecognition();
+          recognition.lang = currentLang === 'hi' ? 'hi-IN' : 'en-US';
+          recognition.continuous = false;
+          recognition.interimResults = false;
+          recognition.onresult = (event) => {
+            const transcript = Array.from(event.results).map(result => result[0].transcript).join(' ').trim();
+            if (transcript) {
+              appendVoiceText(target, transcript);
+              showToast(translateDynamic('Voice input complete'), 'success');
+            }
+          };
+          recognition.onerror = () => {
+            showToast(translateDynamic('Voice input failed. Please try again.'), 'error');
+            resetVoiceButton(button);
+            activeVoiceSession = null;
+          };
+          recognition.onend = () => {
+            resetVoiceButton(button);
+            activeVoiceSession = null;
+          };
+
+          button.classList.add('active');
+          button.innerHTML = '<i class="fas fa-stop"></i>';
+          button.disabled = false;
+          activeVoiceSession = { button, recognition };
+          showToast(translateDynamic('Listening...'), 'info');
+          recognition.start();
+          return;
+        }
+
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const recorderOptions = window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus' } : {};
@@ -1482,7 +1644,7 @@
               button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
               const text = await transcribeVoiceWithGroq(blob);
               if (text) {
-                target.value = target.value ? `${target.value} ${text}`.trim() : text;
+                appendVoiceText(target, text);
                 showToast(translateDynamic('Voice input complete'), 'success');
               } else {
                 showToast(translateDynamic('Voice input failed. Please try again.'), 'warning');
