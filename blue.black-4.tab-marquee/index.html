@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harmony in Diversity</title>
+  <link rel="stylesheet" href="css.css" />
+</head>
+<body>
+  <div class="marquee-wrap">
+    <marquee behavior="scroll" direction="left" scrollamount="12">🌏 Embrace Unity • Celebrate Diversity 🌍</marquee>
+  </div>
+
+  <main>
+    <aside>
+      <nav>
+        <ul>
+          <li><button class="nav-btn active" data-index="0">Welcome</button></li>
+          <li><button class="nav-btn" data-index="1">Intro</button></li>
+          <li><button class="nav-btn" data-index="2">Gallery</button></li>
+          <li><button class="nav-btn" data-index="3">Contact</button></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <section class="page" id="welcome">
+      <h1>Welcome</h1>
+      <p>Welcome to our site celebrating harmony in diversity!</p>
+      <div class="buttons">
+        <button id="prevBtnWelcome" disabled>⬅ Previous</button>
+        <button id="nextBtnWelcome">Next ➡</button>
+      </div>
+    </section>
+
+    <section class="page" id="intro">
+      <div class="overlay">
+        <h1>Harmony in Diversity</h1>
+        <p>We believe in the strength of differences coexisting. This is a tribute to culture, identity, and collaboration.</p>
+        <div class="buttons">
+          <button id="prevBtnIntro">⬅ Previous</button>
+          <button id="nextBtnIntro">Next ➡</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="gallery">
+      <h1>Visual Celebration</h1>
+      <div class="images">
+        <a href="img1.jpg" target="_blank"><img src="img1.jpg" alt="Art 1" /></a>
+        <a href="img2.jpg" target="_blank"><img src="img2.jpg" alt="Art 2" /></a>
+        <a href="img3.jpg" target="_blank"><img src="img3.jpg" alt="Art 3" /></a>
+      </div>
+      <div class="buttons">
+        <button id="prevBtnGallery">⬅ Previous</button>
+        <button id="nextBtnGallery">Next ➡</button>
+      </div>
+    </section>
+
+    <section class="page" id="contact">
+      <h1>Get in Touch</h1>
+      <p>8700919693</p>
+      <div class="buttons">
+        <button id="prevBtnContact">⬅ Previous</button>
+        <button id="nextBtnContact" disabled>Next ➡</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 Harmony in Diversity</p>
+  </footer>
+
+  <script src="js.js"></script>
+</body>
+</html>

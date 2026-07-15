@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Sites</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
+  #menu { width: 220px; min-width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; }
+  #menu h2 { font-size: 14px; padding: 0 15px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 5px 0 10px; }
+  #menu .item { padding: 10px 15px; cursor: pointer; word-break: break-word; }
+  #menu .item:hover { background: #2a2a2a; }
+  #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
+  #view { flex: 1; }
+  #view iframe { width: 100%; height: 100%; border: none; display: block; }
+  #placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; }
+  #error { padding: 15px; color: #f66; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div id="menu"><h2>Sites</h2></div>
+  <div id="view"><div id="placeholder">Select a site from the menu</div></div>
+
+<script>
+fetch('sites.json')
+  .then(r => r.json())
+  .then(sites => {
+    const menu = document.getElementById('menu');
+
+    if (sites.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'error';
+      empty.textContent = 'No sites found yet.';
+      menu.appendChild(empty);
+      return;
+    }
+
+    sites.forEach(name => {
+      const item = document.createElement('div');
+      item.className = 'item';
+      item.textContent = name;
+      item.onclick = () => {
+        document.querySelectorAll('#menu .item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById('view').innerHTML =
+          `<iframe src="/${name}/"></iframe>`;
+      };
+      menu.appendChild(item);
+    });
+  })
+  .catch(() => {
+    const err = document.createElement('div');
+    err.id = 'error';
+    err.textContent = 'Could not load sites.json — make sure build.py ran successfully.';
+    document.getElementById('menu').appendChild(err);
+  });
+</script>
+</body>
+</html>

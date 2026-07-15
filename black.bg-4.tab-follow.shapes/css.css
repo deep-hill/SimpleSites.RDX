@@ -1,0 +1,114 @@
+:root {
+    --txt-l: #fff;
+    --txt-d: #1a1a1a;
+    --rgba1: rgba(255, 255, 255, 0.6);
+    --rgba2: rgba(255, 255, 255, 0.2);
+}
+* {
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #1a1a1a;
+    background-size: cover;
+    background-attachment: fixed;
+    color: var(--txt-l);
+    position: relative; 
+    overflow: hidden; 
+}
+.shape {
+    position: absolute;
+    border: 2px solid var(--rgba1);
+    will-change: transform;
+    width: 15px; height: 15px;
+    opacity: 0.8; 
+}
+.shape.circle { 
+    border-radius: 50%; 
+}
+.shape.triangle {
+    border-width: 0 8.5px 17px 8.5px; 
+    border-color: transparent transparent var(--rgba1)
+}
+.shape.square { 
+    border-radius: 3px; 
+}
+.site-container {
+    width: 90%; max-width: 1100px;
+    background: transparent;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: none;
+    z-index: 10; 
+}
+.main-nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--rgba2);
+    margin-bottom: 20px;
+}
+.main-nav li { margin: 0 15px; }
+.nav-btn {
+    background: transparent; border: none;
+    color: var(--txt-l);
+    font-size: 1.1em;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 5px;
+}
+.nav-btn.active {
+    font-weight: 600;
+}
+.page {
+    display: none;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+.page.active {
+    display: block;
+    opacity: 1;
+}
+.page h1 {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+    color: var(--txt-l);
+    border-left: 5px solid var(--txt-l);
+    padding-left: 10px;
+}
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+.image-grid img {
+    width: 100%; height: auto;
+    border-radius: 8px;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+.image-grid img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px var(--txt-l);
+}
+footer {
+    text-align: center;
+    padding: 15px 0 5px;
+    margin-top: 20px;
+    border-top: 1px solid var(--rgba2);
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+.form{
+    background-color: var(--txt-d);
+    outline-color: var(--txt-d);
+    color: var(--txt-l);
+}
