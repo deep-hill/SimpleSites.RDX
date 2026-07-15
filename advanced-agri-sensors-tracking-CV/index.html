@@ -1,0 +1,1607 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TERRA-1</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <style>
+        :root {
+            --primary: #0a1a0f;
+            --secondary: #1a3a22;
+            --accent: #00ff41;
+            --bg: #f4f7f5;
+            --shape-color: rgba(26, 58, 34, 0.15);
+            --border-color: rgba(10, 26, 15, 0.1);
+            --card-bg: #ffffff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', 'Segoe UI', -apple-system, sans-serif; }
+        body {
+            background: var(--bg); color: var(--primary);
+            height: 100vh; overflow: hidden;
+        }
+        .alert-banner {
+            display: none;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            color: #fff;
+            align-items: center;
+        }
+        #frost-alert { background: #2c6fad; }
+        #heat-alert { background: #c0392b; }
+
+        .shape {
+            position: absolute; 
+            border: 2px solid rgba(0, 0, 0, 0.4); 
+            background: transparent;
+            pointer-events: none; 
+            will-change: transform; 
+            width: 15px; 
+            height: 15px; 
+            z-index: 100;
+            opacity: 0.6;
+        }
+        .shape.circle { border-radius: 50% !important; }
+        .shape.triangle {
+            width: 0; height: 0; border-style: solid;
+            border-color: transparent transparent rgba(0, 0, 0, 0.4);
+        }
+        .shape.square { border-radius: 0; }
+
+        .app-container {
+            position: absolute; left: 90px; top: 0; right: 0; bottom: 0;
+            background: rgba(244, 247, 245, 0.85); backdrop-filter: blur(25px);
+            border-radius: 0; border-left: 1px solid var(--border-color);
+            display: flex; flex-direction: column; z-index: 10; overflow: hidden;
+            box-shadow: -10px 0 50px rgba(0, 0, 0, 0.05);
+            padding-left: 20px;
+        }
+        .sidebar-nav {
+            width: 90px;
+            background: var(--primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 0;
+            gap: 25px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            z-index: 20;
+        }
+        .nav-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1.2em;
+            border: 1px solid transparent;
+        }
+        .nav-icon i { font-size: 1.4em; margin-bottom: 2px; }
+        .nav-icon span { font-family: 'IBM Plex Mono'; font-size: 0.55em; text-transform: uppercase; margin-top: 4px; font-weight: 600; opacity: 0.6; }
+        .nav-icon.active { 
+            color: var(--accent); 
+            background: rgba(0, 255, 65, 0.05); 
+            border: 1px solid rgba(0, 255, 65, 0.2);
+            box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.1);
+        }
+        .nav-icon.active span { opacity: 1; color: var(--accent); }
+
+        .glass-card { 
+            opacity: 1;
+            background: var(--card-bg); 
+            border: 1px solid var(--border-color); 
+            border-radius: 0; 
+            padding: 25px; 
+            position: relative;
+            box-shadow: 4px 4px 0px rgba(10, 26, 15, 0.05);
+        }
+        
+        .glass-card::before, .glass-card::after {
+            content: ''; position: absolute; width: 10px; height: 10px;
+            border-color: var(--primary); border-style: solid; opacity: 1;
+        }
+        .glass-card::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+        .glass-card::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+        .main-content { flex: 1; overflow-y: auto; padding: 40px 40px 40px 0; position: relative; }
+        
+        #video-feed { width: 100%; border-radius: 0; background: #000; aspect-ratio: 16/9; object-fit: cover; border: 1px solid var(--primary); }
+        .ai-overlay { 
+            position: absolute; top: 15px; left: 15px; 
+            background: rgba(10, 26, 15, 0.9); 
+            color: var(--accent); 
+            font-family: 'IBM Plex Mono', monospace; 
+            padding: 8px 12px; font-size: 0.7em; 
+            border-radius: 0; pointer-events: none; 
+            border-left: 2px solid var(--accent);
+            letter-spacing: 1px;
+        }
+        
+        .ag-btn { 
+            background: var(--primary); 
+            color: white; 
+            padding: 12px 24px; 
+            border-radius: 0; 
+            font-family: 'IBM Plex Mono';
+            font-size: 0.8em;
+            font-weight: 600; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s; 
+            width: 100%; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .ag-btn:hover { background: var(--secondary); transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--accent); }
+        
+        .ag-input { 
+            width: 100%; 
+            background: #ffffff; 
+            border: 1px solid var(--border-color); 
+            border-radius: 0; 
+            padding: 12px; 
+            margin-top: 10px; 
+            font-size: 0.9em;
+            font-family: 'IBM Plex Mono';
+        }
+        .voice-wrap { position: relative; }
+        .voice-btn {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            width: 38px; height: 38px; border: 1px solid rgba(10, 26, 15, 0.15);
+            background: #f3f7f2; color: var(--primary); cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s ease; z-index: 2;
+        }
+        .voice-btn:hover { background: var(--primary); color: white; }
+        .voice-btn.active { background: #c0392b; color: white; border-color: #c0392b; }
+        .voice-btn:disabled { opacity: 0.7; cursor: wait; }
+        .voice-btn i { pointer-events: none; }
+
+        .stats-modal { position: fixed; bottom: 0; right: 0; width: 400px; height: 50vh; background: rgba(0, 0, 0, 0.95); border: 1px solid rgba(0, 255, 65, 0.3); border-radius: 0; display: none; flex-direction: column; z-index: 1000; }
+        .stats-modal.active { display: flex; }
+        .stats-modal-header { padding: 15px; border-bottom: 1px solid rgba(0, 255, 65, 0.2); display: flex; justify-content: space-between; align-items: center; }
+        .stats-modal-header span { color: var(--accent); font-family: 'IBM Plex Mono'; font-size: 0.8em; font-weight: bold; }
+        .stats-modal-header button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 1.2em; }
+        .stats-modal-content { flex: 1; overflow-y: auto; padding: 15px; }
+        .stats-modal-content div { color: var(--accent); font-family: 'IBM Plex Mono'; font-size: 0.75em; margin-bottom: 5px; line-height: 1.4; }
+
+        .page { display: none; }
+        .page.active { display: block; animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+            .sidebar-nav { width: 60px; padding: 20px 0; gap: 15px; }
+            .nav-icon { width: 40px; height: 40px; font-size: 1em; }
+            .app-container { left: 60px; padding-left: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar-nav">
+        <div class="nav-icon active" data-target="ops"><i class="fas fa-cogs"></i><span data-en="Ops" data-hi="संचालन">Ops</span></div>
+        <div class="nav-icon" data-target="vision"><i class="fas fa-eye"></i><span data-en="Vision" data-hi="दृष्टि">Vision</span></div>
+        <div class="nav-icon" data-target="deepsoil"><i class="fas fa-brain"></i><span data-en="AI" data-hi="एआई">AI</span></div>
+        <div class="nav-icon" data-target="data"><i class="fas fa-database"></i><span data-en="Data" data-hi="डेटा">Data</span></div>
+    </nav>
+
+    <div class="app-container">
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Header -->
+            <header class="h-20 border-b flex items-center justify-between px-20 bg-white/40">
+                <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-green-900 flex items-center justify-center text-white">
+                            <i class="fas fa-seedling text-2xl"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span id="page-title" class="text-lg font-bold tracking-tight text-green-900" data-en="TERRA-1 DISEASE DETECTOR" data-hi="टेरा-१ रोग डिटेक्टर">TERRA-1 DISEASE DETECTOR</span>
+                        </div>
+                    </div>
+                <div class="flex items-center gap-6">
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-2">
+                            <span id="loc-display" class="text-xs font-bold text-green-800" data-en="Locating..." data-hi="स्थान पता चल रहा है...">Locating...</span>
+                            <button id="change-location-btn" class="text-xs text-green-600 hover:text-green-800" title="Change Location">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </button>
+                        </div>
+                        <span id="current-time" class="text-[10px] text-green-700 mt-1">00:00:00</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- FIELD OPS PAGE -->
+                <section id="ops" class="page active">
+                    <div class="flex justify-between items-end mb-8">
+                        <div>
+                            <h2 class="text-3xl font-bold text-green-900" data-en="Field Operations" data-hi="खेत के संचालन">Field Operations</h2>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button id="lang-toggle" class="px-6 py-3 bg-green-900 text-white text-sm rounded font-bold hover:bg-green-800 transition border-2 border-green-700" data-en="हिंदी" data-hi="English">हिंदी</button>
+                            <div class="px-4 py-2 bg-green-900 text-white text-[10px] font-bold uppercase tracking-wider ai-pulse" data-en="Live Environment Sync" data-hi="लाइव पर्यावरण समन्वयन">
+                                Live Environment Sync
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="frost-alert" class="alert-banner"><i class="fas fa-snowflake mr-2"></i><strong data-en="Frost Warning" data-hi="ओले की चेतावनी">Frost Warning</strong> — <span data-en="Temperature below 4°C. Protect sensitive crops immediately." data-hi="तापमान 4°C से नीचे है। संवेदनशील फसलों को तुरंत सुरक्षित करें।">Temperature below 4°C. Protect sensitive crops immediately.</span></div>
+                    <div id="heat-alert" class="alert-banner"><i class="fas fa-sun mr-2"></i><strong data-en="Heat Warning" data-hi="ताप चेतावनी">Heat Warning</strong> — <span data-en="Temperature above 30°C. Protect sensitive crops immediately." data-hi="तापमान 30°C से ऊपर है। संवेदनशील फसलों को तुरंत सुरक्षित करें।">Temperature above 30°C. Protect sensitive crops immediately.</span></div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="glass-card col-span-1">
+                            <label class="text-[10px] uppercase font-bold opacity-40 tracking-widest" data-en="Ambient Temp" data-hi="आसपास का तापमान">Ambient Temp</label>
+                            <div class="text-4xl font-mono mt-2" id="temp-val"><i class="fas fa-spinner fa-spin text-green-800"></i></div>
+                            <div class="text-[10px] mt-2 text-green-700" id="temp-status" data-en="Syncing with local sensors..." data-hi="स्थानीय सेंसर के साथ सिंक हो रहा है...">Syncing with local sensors...</div>
+                        </div>
+                        <div class="glass-card col-span-1">
+                            <label class="text-[10px] uppercase font-bold opacity-40 tracking-widest" data-en="Soil Moisture" data-hi="मिट्टी की नमी">Soil Moisture</label>
+                            <div class="text-4xl font-mono mt-2" id="moisture-val"><i class="fas fa-spinner fa-spin text-green-800"></i></div>
+                            <div class="w-full h-1.5 bg-gray-100 mt-4 overflow-hidden">
+                                <div class="h-full bg-green-800 transition-all duration-[2000ms]" id="moisture-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                        <div class="glass-card">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="text-sm font-bold uppercase opacity-50" data-en="Current Conditions" data-hi="वर्तमान स्थिति">Current Conditions</h3>
+                                    <div id="weather-display" class="text-xs text-green-700 mt-2">--</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs uppercase opacity-50" data-en="Rain Today" data-hi="आज की बारिश">Rain Today</div>
+                                    <div id="rain-today" class="text-2xl font-bold mt-1">-- mm</div>
+                                    <div id="rain-prob" class="text-[10px] text-green-800 opacity-80">Probability: --%</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <div class="opacity-50" data-en="Humidity" data-hi="नमी">Humidity</div>
+                                    <div id="wd-humidity" class="font-bold">--</div>
+                                </div>
+                                <div>
+                                    <div class="opacity-50" data-en="Wind Speed" data-hi="हवा की गति">Wind Speed</div>
+                                    <div id="wd-wind" class="font-bold">--</div>
+                                </div>
+                                <div>
+                                    <div class="opacity-50" data-en="Rain Chance" data-hi="बारिश की संभावना">Rain Chance</div>
+                                    <div id="wd-rain" class="font-bold">--</div>
+                                </div>
+                                <div>
+                                    <div class="opacity-50" data-en="UV Index" data-hi="यूवी सूचकांक">UV Index</div>
+                                    <div id="wd-uv" class="font-bold">--</div>
+                                </div>
+                                <div>
+                                    <div class="opacity-50" data-en="Visibility" data-hi="दृश्यता">Visibility</div>
+                                    <div id="wd-vis" class="font-bold">--</div>
+                                </div>
+                                <div class="col-span-2">
+                                    <div class="opacity-50 text-[10px] uppercase" data-en="Current Temperature" data-hi="वर्तमान तापमान">Current Temperature</div>
+                                    <div id="wd-temp" class="font-bold">--</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card">
+                            <h3 class="text-sm font-bold uppercase opacity-50 mb-4" data-en="7-Day Forecast" data-hi="७-दिवसीय पूर्वानुमान">7-Day Forecast</h3>
+                            <div class="flex gap-2 overflow-x-auto" id="forecast-strip"></div>
+                            <div class="mt-6">
+                                <div class="flex items-center justify-between mb-2 text-xs uppercase opacity-50" data-en="Hourly Rain Probability" data-hi="घंटेवार बारिश की संभावना">Hourly Rain Probability</div>
+                                <div class="flex items-end gap-1 h-20" id="rain-chart"></div>
+                                <div class="flex justify-between text-[10px] text-green-700 mt-2" id="rain-hours"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="stats-modal" class="stats-modal">
+                        <div class="stats-modal-header">
+                            <span data-en="SYSTEM_LOGS // STATS FOR NERDS" data-hi="सिस्टम_लॉग्स // विशेषज्ञों के लिए आंकडे">SYSTEM_LOGS // STATS FOR NERDS</span>
+                            <button id="close-stats" onclick="document.getElementById('stats-modal').classList.remove('active')">✕</button>
+                        </div>
+                        <div class="stats-modal-content">
+                            <div id="ai-logs">
+                                <div data-en="> Initializing environment request..." data-hi="> पर्यावरण अनुरोध शुरू कर रहे हैं...">> Initializing environment request...</div>
+                            </div>
+                            <div class="mt-2"> >> <span class="animate-pulse">_</span></div>
+                        </div>
+                    </div>
+                    <button id="show-stats" class="fixed bottom-4 right-4 px-3 py-2 bg-zinc-900 text-green-400 text-xs font-mono border border-green-400/50 rounded hover:bg-zinc-800 cursor-pointer z-50" onclick="document.getElementById('stats-modal').classList.add('active')" data-en="stats for nerds" data-hi="विशेषज्ञों के लिए आंकडे">stats for nerds</button>
+                </section>
+
+                <!-- SPECTRAL VISION PAGE -->
+                <section id="vision" class="page">
+                    <h2 class="text-3xl font-bold text-green-900 mb-8" data-en="Spectral Vision" data-hi="स्पेक्ट्रल दृष्टि">Spectral Vision</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 relative">
+                            <video id="video-feed" autoplay muted playsinline></video>
+                            <div class="ai-overlay">NEURAL_SCAN_V2 // NDVI_ACTIVE // ISO_800</div>
+                            <canvas id="vision-canvas" class="hidden"></canvas>
+                        </div>
+                        <div class="flex flex-col gap-6">
+                            <div class="glass-card flex-1">
+                                <h3 class="font-bold text-lg mb-4" data-en="Vision Diagnostics" data-hi="दृष्टि निदान">Vision Diagnostics</h3>
+                                <div id="vision-output" class="text-sm space-y-4 font-medium opacity-70">
+                                    <div class="p-4 bg-beige-50 border border-dashed border-green-900/20 text-center" data-en="Point camera at plant symptoms for disease detection and treatment recommendations." data-hi="रोग का पता लगाने और उपचार की सिफारिशों के लिए कैमरा पौधे के लक्षणों पर निर्देशित करें।">
+                                        Point camera at plant symptoms for disease detection and treatment recommendations.
+                                    </div>
+                                </div>
+                                <button id="capture-btn" class="ag-btn mt-6" data-en="Analyze for Diseases" data-hi="रोगों के लिए विश्लेषण करें">Analyze for Diseases</button>
+                            </div>
+                            <div class="glass-card">
+                                <h4 class="text-[10px] font-bold uppercase opacity-40 mb-3" data-en="Disease Countermeasures" data-hi="रोग प्रतिकार">Disease Countermeasures</h4>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-xs font-mono font-bold" data-en="Severity:" data-hi="गंभीरता:">Severity:</span>
+                                    <span id="disease-severity" class="text-xs font-bold px-2 py-1 rounded bg-gray-100 text-gray-800" data-en="UNKNOWN" data-hi="अज्ञात">UNKNOWN</span>
+                                </div>
+                                <div id="disease-countermeasures" class="text-sm text-gray-700">
+                                    <div class="text-center text-gray-500 italic" data-en="Analyze a plant to see disease countermeasures" data-hi="रोग प्रतिकार देखने के लिए पौधे का विश्लेषण करें">
+                                        Analyze a plant to see disease countermeasures
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="glass-card">
+                                <h4 class="text-[10px] font-bold uppercase opacity-40 mb-3" data-en="Upload Image" data-hi="छवि अपलोड करें">Upload Image</h4>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <input type="file" id="file-input" class="hidden" accept="image/*">
+                                    <button onclick="document.getElementById('file-input').click()" class="ag-btn text-sm" data-en="Choose File" data-hi="फाइल चुनें">Choose File</button>
+                                </div>
+                                <div id="file-status" class="text-sm text-gray-700">
+                                    <div class="text-center text-gray-500 italic" data-en="No file selected" data-hi="कोई फाइल नहीं चुनी गई">
+                                        No file selected
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DEEP-SOIL AI PAGE -->
+                <section id="deepsoil" class="page">
+                    <h2 class="text-3xl font-bold text-green-900 mb-4" data-en="Deep-Soil Intelligence" data-hi="मृदा बुद्धिमत्ता">Deep-Soil Intelligence</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="glass-card">
+                            <h3 class="font-bold mb-4" data-en="AI Consultation Query" data-hi="एआई परामर्श प्रश्न">AI Consultation Query</h3>
+                            <div class="voice-wrap">
+                                <textarea id="ai-query" class="ag-input h-32 pr-12" data-en="" data-hi="" data-en-placeholder="Example: Given the current temperature and moisture, should I increase nitrogen application for my wheat crops?" data-hi-placeholder="उदाहरण: वर्तमान तापमान और नमी को देखते हुए, क्या मुझे अपनी गेहूँ की फसल में नाइट्रोजन अनुप्रयोग बढ़ाना चाहिए?"></textarea>
+                                <button type="button" id="ai-voice-btn" class="voice-btn" data-voice-target="ai-query" aria-label="Voice input">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                            </div>
+                            <button id="consult-btn" class="ag-btn mt-4" data-en="Generate AI Recommendation" data-hi="एआई सिफारिश उत्पन्न करें">Generate AI Recommendation</button>
+                        </div>
+                        <div class="glass-card bg-green-50/50 border-green-900/10 min-h-[200px] flex flex-col">
+                            <h3 class="font-bold mb-4 flex justify-between" data-en="AI Insights" data-hi="एआई अंतर्दृष्टि">
+                                <span>AI Insights</span>
+                                <span class="text-[10px] font-mono text-green-700" data-en="Powered by Groq" data-hi="Groq द्वारा संचालित">Powered by Groq</span>
+                            </h3>
+                            <div id="ai-response" class="text-sm leading-relaxed opacity-80 whitespace-pre-wrap" data-en="Awaiting query parameters... Use the panel on the left to consult the Deep-Soil AI." data-hi="क्वेरी पैरामीटर की प्रतीक्षा... Deep-Soil AI से परामर्श करने के लिए बाईं ओर के पैनल का उपयोग करें।">
+                                Awaiting query parameters... Use the panel on the left to consult the Deep-Soil AI.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- DATA PAGE -->
+                <section id="data" class="page">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="glass-card p-6">
+                            <h3 class="font-bold text-xl mb-6" data-en="Crop Management" data-hi="फसल प्रबंधन">Crop Management</h3>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="voice-wrap">
+                                        <input type="text" id="crop-name" class="ag-input pr-12" data-en-placeholder="Crop name (e.g., Wheat, Rice)" data-hi-placeholder="फसल का नाम (जैसे, गेहूं, चावल)">
+                                        <button type="button" id="crop-voice-btn" class="voice-btn" data-voice-target="crop-name" aria-label="Voice input">
+                                            <i class="fas fa-microphone"></i>
+                                        </button>
+                                    </div>
+                                    <input type="text" id="plant-date" class="ag-input" data-en-placeholder="Planting date (DD/MM/YYYY)" data-hi-placeholder="बुआई की तारीख (DD/MM/YYYY)">
+                                </div>
+                                <button id="add-crop-btn" class="ag-btn" data-en="Add Crop" data-hi="फसल जोड़ें">Add Crop</button>
+                            </div>
+
+                            <div class="mt-6">
+                                <h4 class="font-semibold mb-3" data-en="Your Crops" data-hi="आपकी फसलें">Your Crops</h4>
+                                <div id="crops-list" class="space-y-3 max-h-64 overflow-y-auto">
+                                    <div class="text-gray-500 italic text-center py-8" data-en="No crops added yet. Start by adding your first crop above." data-hi="अभी तक कोई फसल नहीं जोड़ी गई। ऊपर से अपनी पहली फसल जोड़कर शुरू करें।">No crops added yet. Start by adding your first crop above.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFromCache();
+        renderCrops();
+        renderNotifications();
+        updateUILanguage();
+    });
+      const TRANSLATIONS = {
+        en: {
+          'Field Operations': 'Field Operations',
+          'Spectral Vision': 'Spectral Vision',
+          'Deep-Soil Intelligence': 'Deep-Soil Intelligence',
+          'Bio-Metrics': 'Bio-Metrics',
+          'Analyze for Diseases': 'Analyze for Diseases',
+          'Drag & Drop Image': 'Drag & Drop Image',
+          'Point camera at plant symptoms for disease detection and treatment recommendations.': 'Point camera at plant symptoms for disease detection and treatment recommendations.',
+          'Analyze a plant to see disease countermeasures': 'Analyze a plant to see disease countermeasures',
+          'Severity:': 'Severity:',
+          'Disease Countermeasures': 'Disease Countermeasures',
+          'Vision Diagnostics': 'Vision Diagnostics',
+          'AI Consultation Query': 'AI Consultation Query',
+          'Generate AI Recommendation': 'Generate AI Recommendation',
+          'AI Insights': 'AI Insights',
+          'Powered by Groq': 'Powered by Groq',
+          'Awaiting query parameters... Use the panel on the left to consult the Deep-Soil AI.': 'Awaiting query parameters... Use the panel on the left to consult the Deep-Soil AI.',
+          'Crop Cycle Tracking': 'Crop Cycle Tracking',
+          'Organic Wheat': 'Organic Wheat',
+          'Stage: Flowering': 'Stage: Flowering',
+          'Sweet Corn': 'Sweet Corn',
+          'Stage: Maturation': 'Stage: Maturation',
+          'Environmental Trends': 'Environmental Trends',
+          'Current Conditions': 'Current Conditions',
+          'Rain Today': 'Rain Today',
+          'Humidity': 'Humidity',
+          'Wind Speed': 'Wind Speed',
+          'Rain Chance': 'Rain Chance',
+          'UV Index': 'UV Index',
+          'Visibility': 'Visibility',
+          'Current Temperature': 'Current Temperature',
+          '7-Day Forecast': '7-Day Forecast',
+          'Hourly Rain Probability': 'Hourly Rain Probability',
+          'SYSTEM_LOGS // STATS FOR NERDS': 'SYSTEM_LOGS // STATS FOR NERDS',
+          'stats for nerds': 'stats for nerds',
+          'Initializing environment request...': 'Initializing environment request...',
+          '⚠️ Location access denied. Using default location...': '⚠️ Location access denied. Using default location...',
+          'Offline Mode': 'Offline Mode',
+          'Camera disconnected.': 'Camera disconnected.',
+          'Capturing frame and running neural analysis...': 'Capturing frame and running neural analysis...',
+          'Voice input ready': 'Voice input ready',
+          'Listening...': 'Listening...',
+          'Voice input complete': 'Voice input complete',
+          'Voice input failed. Please try again.': 'Voice input failed. Please try again.',
+          'Microphone access is required for voice input.': 'Microphone access is required for voice input.'
+        },
+        hi: {
+          'Field Operations': 'खेत के संचालन',
+          'Spectral Vision': 'स्पेक्ट्रल दृष्टि',
+          'Deep-Soil Intelligence': 'मृदा बुद्धिमत्ता',
+          'Bio-Metrics': 'जैव संकेतक',
+          'Analyze for Diseases': 'रोगों का विश्लेषण करें',
+          'Drag & Drop Image': 'छवि खींचें और छोड़ें',
+          'Point camera at plant symptoms for disease detection and treatment recommendations.': 'रोग पहचान और उपचार के लिए पत्तियों में लक्षणों को लक्षित करें।',
+          'Analyze a plant to see disease countermeasures': 'रोग प्रतिकार देखने के लिए पौधे का विश्लेषण करें',
+          'Severity:': 'गंभीरता:',
+          'Disease Countermeasures': 'रोग प्रतिकार',
+          'Vision Diagnostics': 'दृष्टि जाँच',
+          'AI Consultation Query': 'एआई परामर्श प्रश्न',
+          'Generate AI Recommendation': 'एआई सिफ़ारिश बनाएं',
+          'AI Insights': 'एआई अंतर्दृष्टि',
+          'Powered by Groq': 'Groq द्वारा संचालित',
+          'Awaiting query parameters... Use the panel on the left to consult the Deep-Soil AI.': 'प्रश्न पैरामीटर की प्रतीक्षा... Deep-Soil AI से परामर्श करने के लिए बाईं ओर के पैनल का उपयोग करें।',
+          'Crop Cycle Tracking': 'फसल चक्र निगरानी',
+          'Organic Wheat': 'जैविक गेहूं',
+          'Stage: Flowering': 'चरण: पुष्पन',
+          'Sweet Corn': 'मीठी मकई',
+          'Stage: Maturation': 'चरण: परिपक्वता',
+          'Environmental Trends': 'पर्यावरणीय प्रवृत्तियां',
+          'Current Conditions': 'वर्तमान स्थिति',
+          'Rain Today': 'आज की बारिश',
+          'Humidity': 'नमी',
+          'Wind Speed': 'हवा की गति',
+          'Rain Chance': 'बारिश की संभावना',
+          'UV Index': 'यूवी सूचकांक',
+          'Visibility': 'दृश्यता',
+          'Current Temperature': 'वर्तमान तापमान',
+          '7-Day Forecast': '७-दिवसीय पूर्वानुमान',
+          'Hourly Rain Probability': 'घंटेवार बारिश की संभावना',
+          'SYSTEM_LOGS // STATS FOR NERDS': 'सिस्टम_लॉग्स // विशेषज्ञ आँकड़े',
+          'stats for nerds': 'विशेषज्ञों के लिए आँकड़े',
+          'Initializing environment request...': 'पर्यावरण अनुरोध शुरू कर रहे हैं...',
+          '⚠️ Location access denied. Using default location...': '⚠️ स्थान पहुँच अस्वीकृत। डिफ़ॉल्ट स्थान उपयोग किया जा रहा है...',
+          'Set your Groq API key in the source code (line 1 of the script).': 'अपने सोर्स कोड में Groq API कुंजी सेट करें (स्क्रिप्ट की पंक्ति 1).',
+          'Offline Mode': 'ऑफ़लाइन मोड',
+          'Camera disconnected.': 'कैमरा डिस्कनेक्ट हुआ।',
+          'Capturing frame and running neural analysis...': 'फ्रेम कैप्चर कर रहे हैं और न्यूरल विश्लेषण चला रहे हैं...',
+          'Voice input ready': 'वॉइस इंस्पुट तैयार है',
+          'Listening...': 'सुन रहे हैं...',
+          'Voice input complete': 'वॉइस इंस्पुट पूरा हुआ',
+          'Voice input failed. Please try again.': 'वॉइस इंस्पुट विफल हुआ। कृपया फिर से प्रयास करें।',
+          'Microphone access is required for voice input.': 'वॉइस इंस्पुट के लिए माइक की अनुमति आवश्यक है।'
+        }
+      };
+
+      let currentLang = 'en';
+      let lastWeatherData = null;
+      let lastLocationLabel = null;
+      let farmerCrops = JSON.parse(localStorage.getItem('farmerCrops') || '[]');
+      let cropNotifications = JSON.parse(localStorage.getItem('cropNotifications') || '[]');
+      let activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]');
+      let savedLocation = JSON.parse(localStorage.getItem('savedLocation') || 'null');
+
+      async function requestNotificationPermission() {
+        if ('Notification' in window) {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            showToast(translateDynamic('Notifications enabled!'), 'success');
+          } else {
+            showToast(translateDynamic('Notifications disabled. You can enable them in browser settings.'), 'warning');
+          }
+          return permission === 'granted';
+        }
+        return false;
+      }
+
+      function showBrowserNotification(title, body) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(title, {
+            body: body,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico'
+          });
+        }
+      }
+
+      function addActivityLog(message) {
+        const activity = {
+          id: Date.now(),
+          message: message,
+          timestamp: new Date()
+        };
+        activityLog.unshift(activity);
+        if (activityLog.length > 50) activityLog = activityLog.slice(0, 50);
+        localStorage.setItem('activityLog', JSON.stringify(activityLog));
+        renderActivityLog();
+      }
+
+      function renderActivityLog() {
+        const activityList = document.getElementById('activity-list');
+        if (activityLog.length === 0) {
+          activityList.innerHTML = `<div class="text-gray-500 italic text-center py-8" data-en="No recent activity" data-hi="कोई हालिया गतिविधि नहीं">No recent activity</div>`;
+          return;
+        }
+
+        activityList.innerHTML = activityLog.slice(0, 10).map(activity => {
+          const timeAgo = getTimeAgo(activity.timestamp);
+          return `
+            <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+              <i class="fas fa-circle text-green-500 text-xs mt-1"></i>
+              <div class="flex-1">
+                <p class="text-sm text-gray-800">${translateDynamic(activity.message)}</p>
+                <p class="text-xs text-gray-500 mt-1">${timeAgo}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+        updateUILanguage();
+      }
+
+      function getTimeAgo(timestamp) {
+        const now = new Date();
+        const diff = now - new Date(timestamp);
+        const minutes = Math.floor(diff / (1000 * 60));
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+        if (minutes < 1) return translateDynamic('Just now');
+        if (minutes < 60) return translateDynamic(`${minutes} minutes ago`);
+        if (hours < 24) return translateDynamic(`${hours} hours ago`);
+        return translateDynamic(`${days} days ago`);
+      }
+
+      function renderDashboardStats() {
+        const activeCropsCount = farmerCrops.length;
+        const notificationsCount = cropNotifications.filter(n => {
+          const age = (new Date() - new Date(n.timestamp)) / (1000 * 60 * 60);
+          return age < 24;
+        }).length;
+
+        document.getElementById('active-crops-count').textContent = activeCropsCount;
+        document.getElementById('notifications-count').textContent = notificationsCount;
+        document.getElementById('growth-rate').textContent = activeCropsCount > 0 ? '85%' : '0%';
+      }
+
+      async function changeLocation() {
+        const newLocation = prompt(translateDynamic('Enter new location (latitude,longitude) or leave empty to use current location:'));
+        if (newLocation === null) return;
+
+        if (newLocation.trim() === '') {
+          savedLocation = null;
+          localStorage.removeItem('savedLocation');
+          await loadWeather();
+          showToast(translateDynamic('Using current location'), 'info');
+        } else {
+          const coords = newLocation.split(',').map(c => parseFloat(c.trim()));
+          if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+            savedLocation = { lat: coords[0], lon: coords[1] };
+            localStorage.setItem('savedLocation', JSON.stringify(savedLocation));
+            await loadWeather();
+            showToast(translateDynamic('Location updated'), 'success');
+          } else {
+            showToast(translateDynamic('Invalid coordinates format. Use: latitude,longitude'), 'error');
+          }
+        }
+      }
+
+      function toggleLanguage() {
+        currentLang = currentLang === 'en' ? 'hi' : 'en';
+        refreshDynamicLanguage();
+        document.getElementById('lang-toggle').innerText = currentLang === 'en' ? 'हिंदी' : 'English';
+      }
+
+      function updateUILanguage() {
+        document.querySelectorAll('[data-en][data-hi], input[data-en-placeholder], input[data-hi-placeholder], textarea[data-en-placeholder], textarea[data-hi-placeholder]').forEach(el => {
+          if (el.hasAttribute('data-en') && el.hasAttribute('data-hi')) {
+            el.innerText = el.getAttribute(`data-${currentLang}`);
+          }
+          if (el.hasAttribute(`data-${currentLang}-placeholder`)) {
+            el.placeholder = el.getAttribute(`data-${currentLang}-placeholder`);
+          }
+          if (el.hasAttribute(`data-${currentLang}-title`)) {
+            el.title = el.getAttribute(`data-${currentLang}-title`);
+          }
+        });
+      }
+
+      function refreshDynamicLanguage() {
+        updateUILanguage();
+        if (lastWeatherData) renderWeather(lastWeatherData, lastLocationLabel);
+        renderCrops();
+        renderNotifications();
+      }
+
+      function translate(text) {
+        const exact = TRANSLATIONS[currentLang][text];
+        if (exact) return exact;
+        return translateDynamic(text);
+      }
+
+      function translateDynamic(text) {
+        if (currentLang === 'en') return text;
+        const replacements = {
+          'Today': 'आज',
+          'Probability': 'संभावना',
+          'humidity': 'नमी',
+          'Humidity': 'नमी',
+          'Wind': 'हवा',
+          'UV': 'यूवी',
+          'Chance:': 'संभावना:',
+          'Rain today:': 'आज वर्षा:',
+          'Weather synced —': 'मौसम सिंक हुआ —',
+          'Location acquired:': 'स्थान मिला:',
+          'Weather sync failed:': 'मौसम सिंक विफल: ',
+          'Frost Warning': 'ओले की चेतावनी',
+          'Heat Warning': 'ताप चेतावनी',
+          'temp is': 'तापमान है',
+          'Cover crops.': 'फसलों को कवर करें।',
+          'Analyzing…': 'विश्लेषण हो रहा है…',
+          'Thinking…': 'सोच रहे हैं…',
+          'No image uploaded.': 'कोई छवि अपलोड नहीं हुई।',
+          'Image loaded. Click Analyze Crop.': 'छवि लोड हो गई। विश्लेषण के लिए क्लिक करें।',
+          'Camera not available.': 'कैमरा उपलब्ध नहीं है।',
+          'Analysis failed: ': 'विश्लेषण विफल: ',
+        };
+        let result = text;
+        Object.entries(replacements).forEach(([en, hi]) => {
+          result = result.split(en).join(hi);
+        });
+        return result;
+      }
+
+      function saveToCache() {
+        localStorage.setItem('farmerCrops', JSON.stringify(farmerCrops));
+        localStorage.setItem('cropNotifications', JSON.stringify(cropNotifications));
+        localStorage.setItem('lastWeatherData', JSON.stringify(lastWeatherData));
+        localStorage.setItem('lastLocationLabel', lastLocationLabel || '');
+      }
+
+      function loadFromCache() {
+        const cachedWeather = localStorage.getItem('lastWeatherData');
+        const cachedLocation = localStorage.getItem('lastLocationLabel');
+        if (cachedWeather && cachedLocation) {
+          lastWeatherData = JSON.parse(cachedWeather);
+          lastLocationLabel = cachedLocation;
+          renderWeather(lastWeatherData, lastLocationLabel);
+          addLog(translateDynamic('<i class="fas fa-database"></i> Data loaded from cache'));
+        }
+      }
+
+      function normalizeGrowthStage(rawStage) {
+        const stage = String(rawStage || '').toLowerCase().trim();
+        if (!stage) return 'seedling';
+        if (stage.includes('ready') || stage.includes('harvest')) return 'ready_for_harvest';
+        if (stage.includes('matur')) return 'maturation';
+        if (stage.includes('flower')) return 'flowering';
+        if (stage.includes('veget')) return 'vegetative';
+        if (stage.includes('seed') || stage.includes('sprout') || stage.includes('germ')) return 'seedling';
+        return 'seedling';
+      }
+
+      function buildWeatherSummary() {
+        if (!lastWeatherData) return translateDynamic('weather data unavailable');
+        const temp = lastWeatherData.current_weather?.temperature ?? '--';
+        const humidity = lastWeatherData.hourly?.relativehumidity_2m?.[0] ?? '--';
+        const wind = lastWeatherData.current_weather?.windspeed ?? '--';
+        const rainProb = lastWeatherData.hourly?.precipitation_probability?.[0] ?? '--';
+        return `temperature ${temp}°C, humidity ${humidity}%, wind ${wind} km/h, rain probability ${rainProb}%`;
+      }
+
+      function extractJsonPayload(text) {
+        if (!text) return null;
+        const match = text.match(/\{[\s\S]*\}/);
+        if (!match) return null;
+        try { return JSON.parse(match[0]); } catch (e) { return null; }
+      }
+
+      function inferCropStageFromRules(cropName, plantDate) {
+        const cropData = validateCropName(cropName);
+        if (!cropData) {
+          return { valid: false, stage: 'seedling', reason: translateDynamic('Invalid crop name. Please enter a valid crop like Wheat, Rice, Corn, etc.') };
+        }
+        const now = new Date();
+        const daysSincePlanting = Math.floor((now - plantDate) / (1000 * 60 * 60 * 24));
+        const stages = cropData.stages;
+        let stage = 'seedling';
+        if (daysSincePlanting < stages.seedling) stage = 'seedling';
+        else if (daysSincePlanting < stages.vegetative) stage = 'vegetative';
+        else if (daysSincePlanting < stages.flowering) stage = 'flowering';
+        else if (daysSincePlanting < stages.maturation) stage = 'maturation';
+        else stage = 'ready_for_harvest';
+        return { valid: true, stage, reason: translateDynamic('Using planting date and crop catalog') };
+      }
+
+      async function inferCropStageFromAI(cropName, plantDateStr, plantDate) {
+        if (!GROQ_API_KEY || GROQ_API_KEY === 'YOUR_GROQ_API_KEY_HERE') {
+          return inferCropStageFromRules(cropName, plantDate);
+        }
+        try {
+          const daysSincePlanting = Math.floor((new Date() - plantDate) / (1000 * 60 * 60 * 24));
+          const prompt = 'You are an expert agronomist. Validate the crop name and estimate the current growth stage using the planting date and current environmental conditions. Return strict JSON only with keys: isValidCrop, normalizedCropName, growthStage, reason.';
+          const userContent = `Crop name: ${cropName}. Sowing date: ${plantDateStr}. Days since sowing: ${daysSincePlanting}. Current conditions: ${buildWeatherSummary()}. Use only common crop names and map the answer to one of these stages: seedling, vegetative, flowering, maturation, ready_for_harvest. Respond in ${currentLang === 'hi' ? 'Hindi' : 'English'}.`;
+          const responseText = await callGroq(prompt, userContent, false);
+          const payload = extractJsonPayload(responseText);
+          if (payload && typeof payload.isValidCrop === 'boolean') {
+            if (!payload.isValidCrop) {
+              return { valid: false, stage: 'seedling', reason: payload.reason || translateDynamic('This crop name looks invalid for farming.') };
+            }
+            return {
+              valid: true,
+              stage: normalizeGrowthStage(payload.growthStage),
+              reason: payload.reason || translateDynamic('Growth stage assigned from AI analysis')
+            };
+          }
+        } catch (e) {
+          console.warn('AI growth-stage inference failed', e);
+        }
+        return inferCropStageFromRules(cropName, plantDate);
+      }
+
+      async function addCrop(cropName, plantDateStr) {
+        const trimmedName = cropName.trim();
+        if (!trimmedName) {
+          showToast(translateDynamic('Please enter a crop name.'), 'warning');
+          return;
+        }
+
+        const plantDate = parseDateInput(plantDateStr);
+        if (!plantDate) {
+          showToast(translateDynamic('Invalid date format. Please use DD/MM/YYYY format.'), 'error');
+          return;
+        }
+
+        if (plantDate > new Date()) {
+          showToast(translateDynamic('Planting date cannot be in the future.'), 'error');
+          return;
+        }
+
+        const inference = await inferCropStageFromAI(trimmedName, plantDateStr, plantDate);
+        if (!inference.valid) {
+          showToast(inference.reason, 'error');
+          return;
+        }
+
+        const crop = {
+          id: Date.now(),
+          name: trimmedName,
+          plantDate: plantDate,
+          stage: inference.stage,
+          aiStage: inference.stage,
+          notifications: [],
+          aiReason: inference.reason
+        };
+        farmerCrops.push(crop);
+        updateCropStage(crop);
+        saveToCache();
+        renderCrops();
+        renderDashboardStats();
+        addActivityLog(`Added ${trimmedName} crop`);
+        showToast(translateDynamic('Crop added successfully!'), 'success');
+      }
+
+      function parseDateInput(dateStr) {
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return null;
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1;
+        const year = parseInt(parts[2]);
+        const date = new Date(year, month, day);
+        return date.getDate() === day && date.getMonth() === month && date.getFullYear() === year ? date : null;
+      }
+
+      const CROP_DATABASE = {
+        'wheat': { name: 'गेहूं', stages: { seedling: 10, vegetative: 30, flowering: 60, maturation: 120 }, valid: true },
+        'rice': { name: 'चावल', stages: { seedling: 15, vegetative: 40, flowering: 70, maturation: 110 }, valid: true },
+        'corn': { name: 'मक्का', stages: { seedling: 12, vegetative: 35, flowering: 65, maturation: 100 }, valid: true },
+        'cotton': { name: 'कपास', stages: { seedling: 14, vegetative: 45, flowering: 80, maturation: 150 }, valid: true },
+        'soybean': { name: 'सोयाबीन', stages: { seedling: 10, vegetative: 25, flowering: 50, maturation: 90 }, valid: true },
+        'potato': { name: 'आलू', stages: { seedling: 8, vegetative: 20, flowering: 35, maturation: 70 }, valid: true },
+        'tomato': { name: 'टमाटर', stages: { seedling: 7, vegetative: 21, flowering: 35, maturation: 60 }, valid: true },
+        'onion': { name: 'प्याज', stages: { seedling: 10, vegetative: 25, flowering: 40, maturation: 80 }, valid: true },
+        'chili': { name: 'मिर्च', stages: { seedling: 8, vegetative: 22, flowering: 35, maturation: 65 }, valid: true },
+        'sugarcane': { name: 'गन्ना', stages: { seedling: 20, vegetative: 60, flowering: 120, maturation: 300 }, valid: true }
+      };
+
+      function validateCropName(cropName) {
+        const normalizedName = cropName.toLowerCase().trim();
+        return CROP_DATABASE[normalizedName] || null;
+      }
+
+      function updateCropStage(crop) {
+        const now = new Date();
+        const daysSincePlanting = Math.floor((now - crop.plantDate) / (1000 * 60 * 60 * 24));
+
+        if (crop.aiStage) {
+          crop.stage = crop.aiStage;
+          generateCropNotifications(crop, daysSincePlanting);
+          return;
+        }
+        
+        const cropData = validateCropName(crop.name);
+        if (!cropData) {
+          crop.stage = 'unknown';
+          return;
+        }
+
+        const stages = cropData.stages;
+        if (daysSincePlanting < stages.seedling) crop.stage = 'seedling';
+        else if (daysSincePlanting < stages.vegetative) crop.stage = 'vegetative';
+        else if (daysSincePlanting < stages.flowering) crop.stage = 'flowering';
+        else if (daysSincePlanting < stages.maturation) crop.stage = 'maturation';
+        else crop.stage = 'ready_for_harvest';
+        
+        generateCropNotifications(crop, daysSincePlanting);
+      }
+
+      function generateCropNotifications(crop, daysSincePlanting) {
+        const notifications = [];
+        const cropData = validateCropName(crop.name);
+        if (!cropData) return;
+        
+        const stages = cropData.stages;
+        
+        if (crop.stage === 'seedling' && daysSincePlanting === Math.floor(stages.seedling * 0.3)) {
+          notifications.push({
+            id: Date.now(),
+            cropId: crop.id,
+            message: `Water ${crop.name} seedlings regularly`,
+            type: 'watering',
+            timestamp: new Date()
+          });
+        } else if (crop.stage === 'vegetative' && daysSincePlanting === Math.floor(stages.vegetative * 0.5)) {
+          notifications.push({
+            id: Date.now(),
+            cropId: crop.id,
+            message: `Apply nitrogen fertilizer to ${crop.name}`,
+            type: 'fertilizer',
+            timestamp: new Date()
+          });
+        } else if (crop.stage === 'flowering' && daysSincePlanting === Math.floor(stages.flowering * 0.7)) {
+          notifications.push({
+            id: Date.now(),
+            cropId: crop.id,
+            message: `Monitor ${crop.name} for pests during flowering`,
+            type: 'pest_control',
+            timestamp: new Date()
+          });
+        } else if (crop.stage === 'maturation' && daysSincePlanting === Math.floor(stages.maturation * 0.9)) {
+          notifications.push({
+            id: Date.now(),
+            cropId: crop.id,
+            message: `${crop.name} is ready for harvest`,
+            type: 'harvest',
+            timestamp: new Date()
+          });
+        }
+        
+        notifications.forEach(notification => {
+          showBrowserNotification('Crop Alert', notification.message);
+        });
+        
+        cropNotifications.push(...notifications);
+        saveToCache();
+      }
+
+      function showNotifications() {
+        const activeNotifications = cropNotifications.filter(n => {
+          const age = (new Date() - new Date(n.timestamp)) / (1000 * 60 * 60);
+          return age < 24; // Show notifications from last 24 hours
+        });
+        
+        activeNotifications.forEach(notification => {
+          showToast(notification.message, 'info');
+        });
+      }
+
+      function renderCrops() {
+        const cropsList = document.getElementById('crops-list');
+        if (farmerCrops.length === 0) {
+          cropsList.innerHTML = `<div class="text-gray-500 italic" data-en="No crops added yet" data-hi="अभी तक कोई फसल नहीं जोड़ी गई">No crops added yet</div>`;
+          return;
+        }
+        
+        const stageLabel = (stage) => {
+          const mapping = {
+            seedling: currentLang === 'hi' ? 'नर्सरी' : 'Seedling',
+            vegetative: currentLang === 'hi' ? 'वृद्धि' : 'Vegetative',
+            flowering: currentLang === 'hi' ? 'पुष्पण' : 'Flowering',
+            maturation: currentLang === 'hi' ? 'परिपक्वता' : 'Maturation',
+            ready_for_harvest: currentLang === 'hi' ? 'कटाई तैयार' : 'Ready for harvest'
+          };
+          return mapping[stage] || stage;
+        };
+
+        cropsList.innerHTML = farmerCrops.map(crop => {
+          const stageColor = crop.stage === 'seedling' ? 'green' : 
+                           crop.stage === 'vegetative' ? 'blue' : 
+                           crop.stage === 'flowering' ? 'yellow' : 'orange';
+          return `
+            <div class="flex justify-between items-center p-3 bg-${stageColor}-50">
+              <span class="text-sm font-bold"><i class="fas fa-seedling text-${stageColor}-600 mr-2"></i>${crop.name}</span>
+              <span class="text-xs font-mono bg-${stageColor}-900 text-white px-2 py-1">${stageLabel(crop.stage)}</span>
+            </div>
+          `;
+        }).join('');
+        updateUILanguage();
+      }
+
+      function renderNotifications() {
+        const notificationsList = document.getElementById('notifications-list');
+        const recentNotifications = cropNotifications.filter(n => {
+          const age = (new Date() - new Date(n.timestamp)) / (1000 * 60 * 60);
+          return age < 24;
+        });
+        
+        if (recentNotifications.length === 0) {
+          notificationsList.innerHTML = `<div class="text-gray-500 italic text-center py-4" data-en="No recent notifications" data-hi="कोई हालिया सूचना नहीं">No recent notifications</div>`;
+          return;
+        }
+        
+        notificationsList.innerHTML = recentNotifications.slice(0, 5).map(notification => {
+          const cropName = farmerCrops.find(c => c.id === notification.cropId)?.name || 'Unknown Crop';
+          const typeIcon = {
+            'watering': 'tint',
+            'fertilizer': 'leaf',
+            'pest_control': 'bug',
+            'harvest': 'cut'
+          }[notification.type] || 'bell';
+          
+          return `
+            <div class="flex items-start gap-2 p-2 bg-green-50 rounded border-l-2 border-green-500">
+              <i class="fas fa-${typeIcon} text-green-600 text-sm mt-0.5"></i>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-800">${translateDynamic(notification.message)}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+        updateUILanguage();
+      }
+
+      function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-lg z-50 ${
+          type === 'warning' ? 'bg-yellow-500' : 
+          type === 'error' ? 'bg-red-500' : 
+          type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+        } text-white`;
+        toast.innerHTML = `<i class="fas fa-info-circle mr-2"></i>${translateDynamic(message)}`;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.remove();
+        }, 5000);
+      }
+
+      async function getPlaceName(lat, lon) {
+        try {
+          const locale = currentLang === 'hi' ? 'hi' : 'en';
+          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${locale}`);
+          const data = await response.json();
+          return data.city || data.locality || data.principalSubdivision || data.countryName;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      const GROQ_API_KEY =
+        "YOUR_GROQ_API_KEY_HERE"; // Replace with your actual Groq API key for AI features
+
+      const pageTitles = {
+        ops: "Field Operations",
+        vision: "Spectral Vision",
+        deepsoil: "Deep-Soil Intelligence",
+        data: "Bio-Metrics",
+      };
+
+      document.querySelectorAll(".nav-icon").forEach((link) => {
+        link.addEventListener("click", () => {
+          document
+            .querySelectorAll(".nav-icon")
+            .forEach((l) => l.classList.remove("active"));
+          document
+            .querySelectorAll(".page")
+            .forEach((p) => p.classList.remove("active"));
+          link.classList.add("active");
+          const t = link.dataset.target;
+          document.getElementById(t).classList.add("active");
+          const title = translate(pageTitles[t]) || "Terra";
+          document.getElementById("page-title").textContent = title;
+        });
+      });
+
+      setInterval(() => {
+        document.getElementById("current-time").textContent = new Date()
+          .toTimeString()
+          .slice(0, 8);
+      }, 1000);
+
+      function addLog(msg) {
+        const logs = document.getElementById("ai-logs");
+        const div = document.createElement("div");
+        div.textContent = translateDynamic(msg);
+        logs.appendChild(div);
+        if (logs.children.length > 7) logs.removeChild(logs.firstChild);
+      }
+
+      function wxIcon(code) {
+        if (code === 0) return "";
+        if (code <= 2) return "";
+        if (code <= 3) return "";
+        if (code <= 48) return "";
+        if (code <= 67) return "";
+        if (code <= 77) return "";
+        if (code <= 82) return "<";
+        return "";
+      }
+
+      function dayLabel(dateStr, i) {
+        if (i === 0) return currentLang === 'hi' ? 'आज' : 'Today';
+        return new Date(dateStr).toLocaleDateString(
+          currentLang === 'hi' ? 'hi-IN' : 'en-US',
+          { weekday: 'short' },
+        );
+      }
+
+      function renderWeather(d, locationLabel) {
+        if (locationLabel) {
+          // Don't overwrite location display here, it's already set in loadWeather
+        }
+
+        const temp = d.current_weather.temperature;
+        const wind = d.current_weather.windspeed;
+        const wcode = d.current_weather.weathercode;
+        const humidity = d.hourly.relativehumidity_2m[0];
+        const rainProb = d.hourly.precipitation_probability[0];
+        const uv = d.hourly.uv_index[0] ?? '--';
+        const vis = (d.hourly.visibility[0] / 1000).toFixed(1);
+        const moisture = (humidity * 0.6).toFixed(1);
+        const rainSum = d.daily.precipitation_sum[0];
+
+        const frostAlert = document.getElementById('frost-alert');
+        if (temp < 4) {
+          frostAlert.style.display = 'flex';
+          frostAlert.innerHTML = `<i class="fas fa-snowflake mr-2"></i>${translateDynamic(
+            `Frost Warning — temp is ${temp}°C. Cover crops.`,
+          )}`;
+        } else {
+          frostAlert.style.display = 'none';
+        }
+
+        const heatAlert = document.getElementById('heat-alert');
+        if (temp > 30) {
+          heatAlert.style.display = 'flex';
+          heatAlert.innerHTML = `<i class="fas fa-sun mr-2"></i>${translateDynamic(
+            `Heat Warning — temp is ${temp}°C. Cover crops.`,
+          )}`;
+        } else {
+          heatAlert.style.display = 'none';
+        }
+
+        document.getElementById('temp-val').textContent = `${temp}°C`;
+        document.getElementById('temp-status').textContent = translateDynamic(
+          `${wxIcon(wcode)} Wind ${wind} km/h`,
+        );
+        document.getElementById('moisture-val').textContent = `${moisture}%`;
+        document.getElementById('moisture-bar').style.width = `${moisture}%`;
+        document.getElementById('rain-today').textContent = `${rainSum} mm`;
+        document.getElementById('rain-prob').textContent = translateDynamic(
+          `Probability: ${rainProb}%`,
+        );
+        document.getElementById('weather-display').textContent = translateDynamic(
+          `${humidity}% humidity · ${wxIcon(wcode)}`,
+        );
+
+        document.getElementById('wd-temp').textContent = `${temp}°C`;
+        document.getElementById('wd-humidity').textContent = `${humidity}%`;
+        document.getElementById('wd-wind').textContent = `${wind} km/h`;
+        document.getElementById('wd-rain').textContent = `${rainProb}%`;
+        document.getElementById('wd-uv').textContent = `${uv}`;
+        document.getElementById('wd-vis').textContent = `${vis} km`;
+
+        const strip = document.getElementById('forecast-strip');
+        strip.innerHTML = '';
+        d.daily.time.forEach((date, i) => {
+          const el = document.createElement('div');
+          el.className = 'forecast-day' + (i === 0 ? ' today' : '');
+          el.innerHTML = `
+              <div class="forecast-label">${dayLabel(date, i)}</div>
+              <div class="fc-icon">${wxIcon(d.daily.weathercode[i])}</div>
+              <div class="fc-high">${Math.round(d.daily.temperature_2m_max[i])}°</div>
+              <div class="fc-low">${Math.round(d.daily.temperature_2m_min[i])}°</div>
+              <div class="fc-rain">💧${d.daily.precipitation_probability_max[i]}%</div>
+            `;
+          strip.appendChild(el);
+        });
+
+        const chart = document.getElementById('rain-chart');
+        const hoursEl = document.getElementById('rain-hours');
+        chart.innerHTML = '';
+        hoursEl.innerHTML = '';
+        const probs = d.hourly.precipitation_probability.slice(0, 12);
+        const maxP = Math.max(...probs, 1);
+        probs.forEach((p, i) => {
+          const bar = document.createElement('div');
+          const color = p > 60 ? '#5b8dd9' : p > 30 ? '#8db4e8' : '#c8d9f0';
+          bar.style.cssText = `flex:1;border-radius:4px 4px 0 0;background:${color};height:${Math.max(4, (p / maxP) * 76)}px;transition:height 0.6s ease;`;
+          bar.title = `${p}%`;
+          chart.appendChild(bar);
+          const lbl = document.createElement('div');
+          lbl.style.cssText =
+            'flex:1;text-align:center;font-size:9px;color:#1b3022;';
+          const h = new Date();
+          h.setHours(h.getHours() + i);
+          lbl.textContent = `${h.getHours()}${currentLang === 'hi' ? 'घं' : 'h'}`;
+          hoursEl.appendChild(lbl);
+        });
+
+        addLog(
+          translateDynamic(
+            `<i class="fas fa-cloud-sun"></i> Weather synced — ${temp}°C, ${humidity}% humidity, UV ${uv}`,
+          ),
+        );
+        addLog(
+          translateDynamic(`<i class="fas fa-cloud-rain"></i> Rain today: ${rainSum}mm · Chance: ${rainProb}%`),
+        );
+      }
+
+      async function loadWeather(lat, lon, locationLabel) {
+        let placeName = locationLabel;
+
+        if (!placeName) {
+          placeName = await getPlaceName(lat, lon);
+          if (!placeName) {
+            placeName = `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+          }
+        }
+
+        document.getElementById("loc-display").innerHTML =
+          `${placeName} <span class="text-[10px] ml-2">(${lat.toFixed(2)}°, ${lon.toFixed(2)}°E)</span>`;
+        addLog(
+          translateDynamic(
+            `Location acquired: ${placeName} (${lat.toFixed(2)}°, ${lon.toFixed(2)}°E)`,
+          ),
+        );
+
+        try {
+          const url =
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+            `&current_weather=true` +
+            `&hourly=relativehumidity_2m,precipitation_probability,uv_index,visibility,windspeed_10m` +
+            `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,windspeed_10m_max` +
+            `&timezone=auto`;
+          const res = await fetch(url);
+          const d = await res.json();
+
+          lastWeatherData = d;
+          lastLocationLabel = placeName;
+          renderWeather(d, placeName);
+          saveToCache();
+        } catch (e) {
+          addLog(translateDynamic('<i class="fas fa-exclamation-triangle"></i> Weather sync failed: ') + e.message);
+        }
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => loadWeather(pos.coords.latitude, pos.coords.longitude),
+        async () => {
+          addLog(translateDynamic("<i class='fas fa-exclamation-triangle'></i> Location access denied. Using default location..."));
+          // Default to Delhi, India as fallback
+          const defaultLat = 28.6139;
+          const defaultLon = 77.2090;
+          const defaultPlace = "Delhi, India";
+          await loadWeather(defaultLat, defaultLon, defaultPlace);
+        },
+        { timeout: 10000 },
+      );
+
+      async function callGroq(systemPrompt, userContent, vision = false) {
+        if (!GROQ_API_KEY || GROQ_API_KEY === "YOUR_GROQ_API_KEY_HERE")
+          throw new Error(
+            translateDynamic(
+              "Set your Groq API key in the source code (line 1 of the script).",
+            ),
+          );
+        
+        const languageInstruction = currentLang === 'hi' 
+          ? " Please respond in Hindi (हिंदी) language." 
+          : " Please respond in English.";
+        const fullSystemPrompt = systemPrompt + languageInstruction;
+        
+        const model = vision
+          ? "meta-llama/llama-4-scout-17b-16e-instruct"
+          : "llama-3.3-70b-versatile";
+        const res = await fetch(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${GROQ_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 1024,
+              messages: [
+                { role: "system", content: fullSystemPrompt },
+                { role: "user", content: Array.isArray(userContent) ? userContent : userContent },
+              ],
+            }),
+          },
+        );
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.choices[0].message.content;
+      }
+
+      async function transcribeVoiceWithGroq(audioBlob) {
+        if (!GROQ_API_KEY || GROQ_API_KEY === 'YOUR_GROQ_API_KEY_HERE') {
+          throw new Error(translateDynamic('Microphone access is required for voice input.'));
+        }
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'voice.webm');
+        formData.append('model', 'whisper-large-v3');
+        formData.append('language', currentLang === 'hi' ? 'hi' : 'en');
+        formData.append('temperature', '0');
+        const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.text || '';
+      }
+
+      document
+        .getElementById("consult-btn")
+        .addEventListener("click", async () => {
+          const query = document.getElementById("ai-query").value.trim();
+          const responseEl = document.getElementById("ai-response");
+          const btn = document.getElementById("consult-btn");
+          if (!query) return;
+          responseEl.style.cssText = "color:var(--dusk);font-style:italic";
+          responseEl.textContent = translateDynamic("Thinking…");
+          btn.disabled = true;
+          try {
+            const text = await callGroq(
+              "You are an expert agricultural advisor. Give practical, concise recommendations for farm management questions.",
+              query,
+            );
+            responseEl.style.cssText = "";
+            responseEl.textContent = text;
+          } catch (e) {
+            responseEl.style.cssText = "color:#c0392b;font-style:italic";
+            responseEl.textContent = translateDynamic(e.message);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+      let visionMode = "camera",
+        uploadedBase64 = null;
+      const video = document.getElementById("video-feed");
+      const canvas = document.getElementById("vision-canvas");
+      const visionOutput = document.getElementById("vision-output");
+
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((s) => (video.srcObject = s))
+        .catch(() => (visionOutput.textContent = translate("Camera not available.")));
+
+      window.switchVisionMode = (mode) => {
+        visionMode = mode;
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        document.getElementById(`tab-${mode}`).classList.add("active");
+        document.getElementById("camera-mode").style.display =
+          mode === "camera" ? "" : "none";
+        document.getElementById("upload-mode").style.display =
+          mode === "upload" ? "" : "none";
+      };
+
+      function loadFile(file) {
+        if (!file?.type.startsWith("image/")) return;
+        visionMode = "upload";
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedBase64 = e.target.result.split(",")[1];
+          visionOutput.textContent = translate("Image loaded. Click Analyze Crop.");
+        };
+        reader.readAsDataURL(file);
+      }
+
+      const fileInput = document.getElementById("file-input");
+      if (fileInput) {
+        fileInput.addEventListener("change", (e) => loadFile(e.target.files[0]));
+      }
+      const dz = document.getElementById("drop-zone");
+      if (dz && fileInput) {
+        dz.addEventListener("click", () => fileInput.click());
+        dz.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          dz.style.borderColor = "var(--moss)";
+        });
+        dz.addEventListener("dragleave", () => (dz.style.borderColor = ""));
+        dz.addEventListener("drop", (e) => {
+          e.preventDefault();
+          dz.style.borderColor = "";
+          loadFile(e.dataTransfer.files[0]);
+        });
+      }
+
+      const captureButton = document.getElementById("capture-btn");
+      if (captureButton) {
+        captureButton.addEventListener("click", async () => {
+          const btn = document.getElementById("capture-btn");
+          if (!btn || !visionOutput) return;
+          visionOutput.textContent = translate("Analyzing…");
+          btn.disabled = true;
+          try {
+            let base64;
+            if (visionMode === "camera") {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              canvas.getContext("2d").drawImage(video, 0, 0);
+              base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
+            } else {
+              if (!uploadedBase64) {
+                visionOutput.textContent = translate("No image uploaded.");
+                btn.disabled = false;
+                return;
+              }
+              base64 = uploadedBase64;
+            }
+            const text = await callGroq(
+              "You are an agricultural assistant. Identify what's in this image. If a plant, give species and brief health notes. Be concise and practical.",
+              [
+                { type: "text", text: "Analyze this crop image." },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:image/jpeg;base64,${base64}` },
+                },
+              ],
+              true,
+            );
+            visionOutput.textContent = text;
+          } catch (e) {
+            visionOutput.textContent = translateDynamic("Analysis failed: ") + e.message;
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      }
+
+      const langToggleButton = document.getElementById('lang-toggle');
+      if (langToggleButton) {
+        langToggleButton.addEventListener('click', toggleLanguage);
+      }
+      updateUILanguage();
+      loadFromCache();
+      renderCrops();
+      renderNotifications();
+
+      document.getElementById('add-crop-btn').addEventListener('click', async () => {
+        const cropName = document.getElementById('crop-name').value;
+        const plantDate = document.getElementById('plant-date').value;
+        if (cropName && plantDate) {
+          await addCrop(cropName, plantDate);
+          document.getElementById('crop-name').value = '';
+          document.getElementById('plant-date').value = '';
+        } else {
+          showToast(translateDynamic('Please fill in all fields'), 'warning');
+        }
+      });
+
+      let activeVoiceSession = null;
+
+      function resetVoiceButton(button) {
+        if (!button) return;
+        button.classList.remove('active');
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-microphone"></i>';
+      }
+
+      async function startVoiceInput(button, target) {
+        if (activeVoiceSession && activeVoiceSession.button !== button) {
+          resetVoiceButton(activeVoiceSession.button);
+          activeVoiceSession?.stream?.getTracks().forEach(track => track.stop());
+          activeVoiceSession = null;
+        }
+        if (activeVoiceSession) {
+          if (activeVoiceSession.recorder && activeVoiceSession.recorder.state !== 'inactive') {
+            activeVoiceSession.recorder.stop();
+          }
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const recorderOptions = window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus' } : {};
+          const recorder = new MediaRecorder(stream, recorderOptions);
+          const chunks = [];
+          recorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
+          recorder.onstop = async () => {
+            const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+            try {
+              button.disabled = true;
+              button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+              const text = await transcribeVoiceWithGroq(blob);
+              if (text) {
+                target.value = target.value ? `${target.value} ${text}`.trim() : text;
+                showToast(translateDynamic('Voice input complete'), 'success');
+              } else {
+                showToast(translateDynamic('Voice input failed. Please try again.'), 'warning');
+              }
+            } catch (error) {
+              showToast(translateDynamic(error.message || 'Voice input failed. Please try again.'), 'error');
+            } finally {
+              resetVoiceButton(button);
+              stream.getTracks().forEach(track => track.stop());
+              activeVoiceSession = null;
+            }
+          };
+          button.classList.add('active');
+          button.innerHTML = '<i class="fas fa-stop"></i>';
+          button.disabled = false;
+          recorder.start();
+          activeVoiceSession = { button, recorder, stream };
+          setTimeout(() => {
+            if (activeVoiceSession && activeVoiceSession.recorder && activeVoiceSession.recorder.state === 'recording') {
+              activeVoiceSession.recorder.stop();
+            }
+          }, 8000);
+          showToast(translateDynamic('Listening...'), 'info');
+        } catch (error) {
+          showToast(translateDynamic(error.message || 'Microphone access is required for voice input.'), 'error');
+        }
+      }
+
+      document.querySelectorAll('.voice-btn').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const targetId = button.getAttribute('data-voice-target');
+          const target = targetId ? document.getElementById(targetId) : null;
+          if (!target) return;
+          await startVoiceInput(button, target);
+        });
+      });
+      
+      // Check for notifications periodically
+      setInterval(() => {
+        farmerCrops.forEach(crop => updateCropStage(crop));
+        renderNotifications();
+        showNotifications();
+      }, 60000); // Check every minute
+    </script>
+    
+    <script>
+        (function() {
+            const container = document.querySelector('.app-container');
+            const shapeCount = 20;
+            const shapes = ['circle', 'square', 'triangle'];
+            
+            for (let i = 0; i < shapeCount; i++) {
+                createShape();
+            }
+
+            function createShape() {
+                const shape = document.createElement('div');
+                const type = shapes[Math.floor(Math.random() * shapes.length)];
+                shape.className = `shape ${type}`;
+                
+                const size = Math.random() * 20 + 15;
+                if (type !== 'triangle') {
+                    shape.style.width = `${size}px`;
+                    shape.style.height = `${size}px`;
+                } else {
+                    shape.style.borderWidth = `0 ${size/2}px ${size}px ${size/2}px`;
+                }
+                
+                // Position relative to the viewport but we'll prepend to app-container 
+                // to keep them visible but "in the background" of the UI content
+                shape.style.left = `${Math.random() * 100}%`;
+                shape.style.top = `${Math.random() * 100}%`;
+                
+                container.prepend(shape);
+                animateShape(shape);
+            }
+
+            function animateShape(el) {
+                const duration = Math.random() * 30000 + 20000;
+                const x = (Math.random() - 0.5) * 200;
+                const y = (Math.random() - 0.5) * 200;
+                const rotation = Math.random() * 360;
+                
+                el.animate([
+                    { transform: 'translate(0, 0) rotate(0deg)' },
+                    { transform: `translate(${x}px, ${y}px) rotate(${rotation}deg)` }
+                ], {
+                    duration: duration,
+                    iterations: Infinity,
+                    direction: 'alternate',
+                    easing: 'linear'
+                });
+            }
+        })();
+    </script>
+    <!-- ADDITIONS END HERE -->
+    <script>
+      // --- MOUSE FOLLOW LOGIC ---
+let targetX = 0, targetY = 0;
+let currentX = 0, currentY = 0;
+
+window.addEventListener('mousemove', (e) => {
+    targetX = e.clientX;
+    targetY = e.clientY;
+});
+
+function updateShapes() {
+    currentX += (targetX - currentX) * 0.05;
+    currentY += (targetY - currentY) * 0.05;
+
+    const shapes = document.querySelectorAll('.shape');
+    shapes.forEach((shape, index) => {
+        // Different "depth" for each shape for a 3D parallax effect
+        const depth = (index % 5 + 1) * 0.05; 
+        shape.style.transform = `translate(${currentX * depth}px, ${currentY * depth}px)`;
+    });
+    requestAnimationFrame(updateShapes);
+}
+updateShapes();
+    </script>
+</body>
+</html>
