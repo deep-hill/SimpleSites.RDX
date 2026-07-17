@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>HOLO·PLANE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --c:#00f5ff;--b:#0055ff;--dark:#000a1a;
+  --glow:0 0 12px #00f5ffaa,0 0 30px #0055ff55;
+  --glow2:0 0 20px #00f5ffdd,0 0 50px #0055ffaa;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;touch-action:none;}
+body{font-family:'Share Tech Mono',monospace;color:var(--c);}
+
+/* ── VIDEO ── */
+#vid{
+  position:fixed;inset:0;width:100%;height:100%;
+  object-fit:cover;z-index:0;
+  /* NO transform:scaleX(-1) — back camera should NOT be mirrored */
+}
+
+/* ── CANVASES ── */
+#handCv,#arCv{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;}
+#arCv{z-index:1;}
+
+/* ── SCANLINES ── */
+#scan{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,245,255,.018) 3px,rgba(0,245,255,.018) 4px);
+}
+
+/* ── VIGNETTE ── */
+#vig{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,5,20,.7) 100%);
+}
+
+/* ── CORNERS ── */
+.cor{position:fixed;width:44px;height:44px;z-index:10;pointer-events:none;}
+.cor::before,.cor::after{content:'';position:absolute;background:var(--c);box-shadow:var(--glow);}
+.cor::before{width:100%;height:2px;top:0;left:0;}
+.cor::after{width:2px;height:100%;top:0;left:0;}
+.cor.tl{top:14px;left:14px;}
+.cor.tr{top:14px;right:14px;transform:scaleX(-1);}
+.cor.bl{bottom:14px;left:14px;transform:scaleY(-1);}
+.cor.br{bottom:14px;right:14px;transform:scale(-1);}
+
+/* ── HEADER ── */
+#hdr{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px 0;pointer-events:none;
+}
+#logo{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:900;letter-spacing:5px;text-shadow:var(--glow);}
+#fps{font-size:9px;letter-spacing:2px;color:#00f5ff88;}
+
+/* ── STATUS ── */
+#status{
+  position:fixed;bottom:110px;left:50%;transform:translateX(-50%);
+  background:rgba(0,8,25,.82);border:1px solid rgba(0,245,255,.5);
+  border-radius:4px;padding:8px 18px;font-size:11px;letter-spacing:2px;
+  text-align:center;box-shadow:var(--glow);z-index:10;
+  backdrop-filter:blur(6px);max-width:88vw;
+  transition:opacity .4s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ── INFO PANELS ── */
+.panel{
+  position:fixed;background:rgba(0,8,25,.82);border:1px solid rgba(0,245,255,.4);
+  border-radius:6px;padding:10px 14px;z-index:10;
+  box-shadow:var(--glow);backdrop-filter:blur(6px);
+  font-size:9px;letter-spacing:1.5px;line-height:1.6;
+}
+#pnlLeft{top:58px;left:16px;}
+#pnlRight{top:58px;right:16px;text-align:right;}
+.pval{font-family:'Orbitron',sans-serif;font-size:18px;color:var(--c);text-shadow:var(--glow2);display:block;}
+.plbl{color:#00f5ff66;font-size:8px;}
+
+/* ── GESTURE RING ── */
+#gring{
+  position:fixed;bottom:180px;left:50%;transform:translateX(-50%);
+  z-index:10;pointer-events:none;width:80px;height:80px;
+}
+#gring svg{width:100%;height:100%;}
+#gtext{
+  position:fixed;bottom:168px;left:50%;transform:translateX(-50%);
+  font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;
+  color:var(--c);text-shadow:var(--glow);z-index:10;white-space:nowrap;
+}
+
+/* ── BOTTOM CONTROLS ── */
+#btns{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;gap:10px;z-index:10;
+}
+.btn{
+  font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:2px;
+  color:var(--c);background:rgba(0,8,25,.85);
+  border:1px solid rgba(0,245,255,.5);border-radius:4px;
+  padding:11px 14px;cursor:pointer;box-shadow:var(--glow);
+  transition:background .15s,transform .1s;touch-action:manipulation;
+}
+.btn:active{background:rgba(0,80,200,.4);transform:scale(.93);}
+
+/* ── START SCREEN ── */
+#start{
+  position:fixed;inset:0;background:rgba(0,5,18,.97);
+  z-index:200;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;padding:32px;
+}
+#start h1{
+  font-family:'Orbitron',sans-serif;font-size:clamp(22px,8vw,40px);
+  font-weight:900;color:var(--c);text-shadow:var(--glow2);
+  letter-spacing:4px;text-align:center;
+}
+#start .sub{font-size:10px;letter-spacing:3px;color:#4499bb;text-align:center;}
+.gguide{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:300px;}
+.gi{
+  background:rgba(0,40,80,.35);border:1px solid rgba(0,245,255,.2);
+  border-radius:6px;padding:10px 8px;text-align:center;
+  font-size:9px;letter-spacing:1px;color:#88bbcc;
+}
+.gi .em{font-size:22px;display:block;margin-bottom:5px;}
+.gi strong{color:var(--c);display:block;font-size:10px;}
+#startBtn{
+  font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;
+  letter-spacing:4px;color:#000814;background:var(--c);
+  border:none;border-radius:4px;padding:15px 40px;cursor:pointer;
+  box-shadow:var(--glow2);animation:pulse 2s ease-in-out infinite;
+  touch-action:manipulation;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 20px #00f5ffaa,0 0 50px #0055ff66;}
+  50%{box-shadow:0 0 40px #00f5ffff,0 0 90px #0055ffbb;}
+}
+.note{font-size:9px;color:#335566;text-align:center;line-height:1.7;max-width:280px;}
+
+/* ── ERROR SCREEN ── */
+#errBox{
+  position:fixed;inset:0;background:rgba(0,5,18,.97);z-index:300;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:32px;text-align:center;
+}
+#errBox h2{font-family:'Orbitron',sans-serif;font-size:16px;color:#ff4466;letter-spacing:3px;}
+#errBox p{font-size:11px;color:#88aabb;letter-spacing:1px;line-height:1.8;max-width:300px;}
+#retryBtn{
+  font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:3px;
+  color:var(--c);background:rgba(0,8,25,.85);border:1px solid var(--c);
+  border-radius:4px;padding:12px 28px;cursor:pointer;box-shadow:var(--glow);
+  touch-action:manipulation;
+}
+
+/* ── PROGRESS BAR ── */
+#prog{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--b),var(--c));box-shadow:0 0 8px var(--c);z-index:400;transition:width .3s;width:0;}
+
+/* ── FLASH ── */
+#flash{position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0;background:rgba(0,245,255,.18);transition:opacity .4s;}
+</style>
+</head>
+<body>
+
+<!-- Progress -->
+<div id="prog"></div>
+<!-- Flash -->
+<div id="flash"></div>
+
+<!-- Start -->
+<div id="start">
+  <h1>HOLO·PLANE</h1>
+  <div class="sub">AR HOLOGRAPHIC SURFACE MAPPER</div>
+  <div class="gguide">
+    <div class="gi"><span class="em">☝️</span><strong>INDEX UP</strong>Hold 1s → Place Plane</div>
+    <div class="gi"><span class="em">✌️</span><strong>PEACE</strong>Hold 1s → Undo Last</div>
+    <div class="gi"><span class="em">✊</span><strong>FIST</strong>Hold 1s → Clear All</div>
+    <div class="gi"><span class="em">🖐️</span><strong>OPEN</strong>Aim / Move</div>
+  </div>
+  <button id="startBtn" onclick="initAR()">INITIALIZE AR</button>
+  <div class="note">
+    ☞ Open in Chrome (Android) or Safari (iOS)<br>
+    ☞ Must be served over HTTPS or localhost<br>
+    ☞ Allow camera when prompted
+  </div>
+</div>
+
+<!-- Error -->
+<div id="errBox">
+  <h2>⚠ CAMERA ACCESS DENIED</h2>
+  <p id="errMsg">Camera permission was denied or is unavailable.</p>
+  <button id="retryBtn" onclick="retryCamera()">RETRY</button>
+  <p style="font-size:9px;color:#445566;margin-top:8px;">
+    On iOS: Settings → Safari → Camera → Allow<br>
+    On Android: Site Settings → Camera → Allow
+  </p>
+</div>
+
+<!-- Video -->
+<video id="vid" autoplay playsinline muted webkit-playsinline></video>
+
+<!-- Canvases -->
+<canvas id="arCv"></canvas>
+<canvas id="handCv"></canvas>
+
+<!-- Overlays -->
+<div id="scan"></div>
+<div id="vig"></div>
+<div class="cor tl"></div>
+<div class="cor tr"></div>
+<div class="cor bl"></div>
+<div class="cor br"></div>
+
+<!-- Header -->
+<div id="hdr">
+  <div id="logo">HOLO·PLANE</div>
+  <div id="fps">-- FPS</div>
+</div>
+
+<!-- Info panels -->
+<div class="panel" id="pnlLeft">
+  <span class="plbl">PLANES</span>
+  <span class="pval" id="planeNum">0</span>
+  <span class="plbl" id="handSt">HAND: SEARCHING</span>
+</div>
+<div class="panel" id="pnlRight">
+  <span class="plbl">GESTURE</span>
+  <span class="pval" id="gestureDisp" style="font-size:13px">---</span>
+  <span class="plbl" id="holdPct">HOLD: 0%</span>
+</div>
+
+<!-- Gesture ring -->
+<div id="gring">
+  <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="40" cy="40" r="34" stroke="rgba(0,245,255,0.2)" stroke-width="3"/>
+    <circle id="progressArc" cx="40" cy="40" r="34"
+      stroke="#00f5ff" stroke-width="3"
+      stroke-dasharray="213.6" stroke-dashoffset="213.6"
+      stroke-linecap="round"
+      transform="rotate(-90 40 40)"
+      style="transition:stroke-dashoffset .1s;filter:drop-shadow(0 0 6px #00f5ff);"/>
+    <text x="40" y="46" text-anchor="middle" fill="#00f5ff"
+      font-family="'Orbitron',sans-serif" font-size="18">✋</text>
+  </svg>
+</div>
+<div id="gtext">AWAITING HAND</div>
+
+<!-- Status -->
+<div id="status">PRESS INITIALIZE TO START</div>
+
+<!-- Controls -->
+<div id="btns">
+  <button class="btn" onclick="undoPlane()">↩ UNDO</button>
+  <button class="btn" onclick="clearPlanes()">⊗ CLEAR</button>
+  <button class="btn" onclick="tapPlace()">✦ TAP PLACE</button>
+  <button class="btn" onclick="toggleFloat()">≋ FLOAT</button>
+</div>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  HOLO·PLANE  –  Fully Working AR Holographic Surface Mapper
+//  Back camera · Hand tracking via TF.js · Three.js planes
+// ═══════════════════════════════════════════════════════════
+
+const $ = id => document.getElementById(id);
+const vid        = $('vid');
+const arCv       = $('arCv');
+const handCv     = $('handCv');
+const statusEl   = $('status');
+const gestureEl  = $('gestureDisp');
+const holdPctEl  = $('holdPct');
+const planeNumEl = $('planeNum');
+const handStEl   = $('handSt');
+const fpsEl      = $('fps');
+const progEl     = $('prog');
+const arcEl      = $('progressArc');
+const gtextEl    = $('gtext');
+const flashEl    = $('flash');
+
+// ── State ──────────────────────────────────────────────────
+let renderer, scene, camera, animClock;
+let planes       = [];
+let floatEnabled = true;
+let isRunning    = false;
+let detector     = null;
+let tfLoaded     = false;
+let stream       = null;
+
+let currentGesture  = 'NONE';
+let holdFrames      = 0;
+const HOLD_NEEDED   = 8;   // ~0.8s at 30fps
+let cooldown        = 0;
+let lastIndexPos    = null;
+
+let frameCount = 0;
+let lastFpsTime = performance.now();
+let fps = 0;
+
+const ARC_CIRC = 2 * Math.PI * 34; // 213.6
+
+// ── Progress bar ───────────────────────────────────────────
+function setProgress(p) { progEl.style.width = p + '%'; }
+function setStatus(msg) { statusEl.textContent = msg; }
+
+// ── Error screen ───────────────────────────────────────────
+function showError(msg) {
+  $('errMsg').textContent = msg;
+  $('errBox').style.display = 'flex';
+}
+function hideError() { $('errBox').style.display = 'none'; }
+
+// ── Camera init ────────────────────────────────────────────
+async function initCamera() {
+  setStatus('REQUESTING CAMERA ACCESS...');
+  setProgress(10);
+
+  // Step 1: enumerate and prefer back camera
+  let deviceId = null;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    // Usually last camera in list is back camera on mobile
+    const backCam = cams.find(d =>
+      /back|rear|environment/i.test(d.label)
+    ) || cams[cams.length - 1];
+    if (backCam && backCam.deviceId) deviceId = backCam.deviceId;
+  } catch(e) { /* ignore, we'll use facingMode */ }
+
+  const constraints = {
+    audio: false,
+    video: deviceId
+      ? { deviceId: { exact: deviceId }, width:{ideal:1280}, height:{ideal:720} }
+      : { facingMode: { ideal: 'environment' }, width:{ideal:1280}, height:{ideal:720} }
+  };
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch(e1) {
+    // Fallback: try any camera
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch(e2) {
+      showError(`Camera error: ${e2.message || e2.name}. Make sure you're on HTTPS and camera permission is granted in browser settings.`);
+      throw e2;
+    }
+  }
+
+  vid.srcObject = stream;
+  vid.setAttribute('playsinline', true);
+  vid.setAttribute('webkit-playsinline', true);
+
+  await new Promise((resolve, reject) => {
+    vid.onloadedmetadata = resolve;
+    vid.onerror = reject;
+    setTimeout(resolve, 3000); // fallback
+  });
+
+  try { await vid.play(); } catch(e) { /* autoplay policy, ignore */ }
+  setProgress(30);
+  setStatus('CAMERA ONLINE');
+  return true;
+}
+
+// ── Load TensorFlow + Handpose ─────────────────────────────
+async function loadHandTracking() {
+  setStatus('LOADING AI HAND TRACKING...');
+  setProgress(40);
+
+  return new Promise((resolve) => {
+    // Load TF.js core
+    const tf1 = document.createElement('script');
+    tf1.src = 'https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js';
+    tf1.onerror = () => { resolve(false); };
+    tf1.onload = () => {
+      setProgress(60);
+      // Load Handpose model
+      const hp = document.createElement('script');
+      hp.src = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose@0.0.7/dist/handpose.js';
+      hp.onerror = () => { resolve(false); };
+      hp.onload = async () => {
+        setProgress(80);
+        try {
+          setStatus('LOADING HAND MODEL WEIGHTS...');
+          detector = await handpose.load({
+            detectionConfidence: 0.8,
+            maxContinuousChecks: 10,
+            iouThreshold: 0.3,
+            scoreThreshold: 0.75
+          });
+          tfLoaded = true;
+          setProgress(100);
+          setStatus('HAND TRACKING READY');
+          resolve(true);
+        } catch(e) {
+          console.warn('Handpose model load error:', e);
+          resolve(false);
+        }
+      };
+      document.head.appendChild(hp);
+    };
+    document.head.appendChild(tf1);
+  });
+}
+
+// ── Three.js init ──────────────────────────────────────────
+function initThree() {
+  renderer = new THREE.WebGLRenderer({ canvas: arCv, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.01, 100);
+  camera.position.set(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0x002266, 1));
+  const pl = new THREE.PointLight(0x00f5ff, 2, 15);
+  pl.position.set(0, 3, -3);
+  scene.add(pl);
+
+  arCv.width = window.innerWidth;
+  arCv.height = window.innerHeight;
+  handCv.width = window.innerWidth;
+  handCv.height = window.innerHeight;
+  animClock = new THREE.Clock();
+
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', () => setTimeout(onResize, 400));
+}
+
+function onResize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  renderer.setSize(W, H);
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+  arCv.width = W; arCv.height = H;
+  handCv.width = W; handCv.height = H;
+}
+
+// ── Device orientation → camera tilt ──────────────────────
+let targetRotX = 0, targetRotZ = 0;
+window.addEventListener('deviceorientation', e => {
+  if (!camera || !e.beta) return;
+  targetRotX = (e.beta - 90) * Math.PI / 180 * 0.08;
+  targetRotZ = e.gamma * Math.PI / 180 * 0.04;
+}, { passive: true });
+
+// ── Holographic plane factory ──────────────────────────────
+function spawnPlane(ndcX, ndcY) {
+  const depth = 2.5 + Math.random() * 1.0;
+
+  // Unproject NDC into world space
+  const vec = new THREE.Vector3(ndcX, ndcY, 0.5);
+  vec.unproject(camera);
+  vec.sub(camera.position).normalize();
+  const pos = camera.position.clone().add(vec.multiplyScalar(depth));
+
+  const W = 0.55 + Math.random() * 0.45;
+  const H2 = W * (0.5 + Math.random() * 0.35);
+
+  const group = new THREE.Group();
+  group.position.copy(pos);
+  group.rotation.x = (Math.random() - 0.5) * 0.5;
+  group.rotation.y = camera.rotation.y + (Math.random() - 0.5) * 0.4;
+
+  // Solid fill (holographic)
+  const fillGeo = new THREE.PlaneGeometry(W, H2);
+  const fillMat = new THREE.MeshBasicMaterial({
+    color: 0x001133, transparent: true, opacity: 0.22, side: THREE.DoubleSide
+  });
+  group.add(new THREE.Mesh(fillGeo, fillMat));
+
+  // Wireframe
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: 0x00f5ff, wireframe: true, transparent: true, opacity: 0.5
+  });
+  group.add(new THREE.Mesh(fillGeo.clone(), wireMat));
+
+  // Edge glow
+  const edgeLines = new THREE.LineSegments(
+    new THREE.EdgesGeometry(fillGeo),
+    new THREE.LineBasicMaterial({ color: 0x00f5ff, transparent: true, opacity: 0.95 })
+  );
+  group.add(edgeLines);
+
+  // Inner grid lines (4 horizontal + 4 vertical)
+  const gridMat = new THREE.LineBasicMaterial({ color: 0x003366, transparent: true, opacity: 0.4 });
+  for (let i = 1; i < 4; i++) {
+    const y = -H2/2 + (H2/4)*i;
+    const pts = [new THREE.Vector3(-W/2, y, 0.001), new THREE.Vector3(W/2, y, 0.001)];
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+  }
+  for (let i = 1; i < 4; i++) {
+    const x = -W/2 + (W/4)*i;
+    const pts = [new THREE.Vector3(x, -H2/2, 0.001), new THREE.Vector3(x, H2/2, 0.001)];
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+  }
+
+  // Corner dots
+  const dotGeo = new THREE.SphereGeometry(0.011, 6, 6);
+  const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  [[-W/2,-H2/2],[W/2,-H2/2],[-W/2,H2/2],[W/2,H2/2]].forEach(([cx,cy]) => {
+    const d = new THREE.Mesh(dotGeo, dotMat);
+    d.position.set(cx, cy, 0.002);
+    group.add(d);
+  });
+
+  // Scan line
+  const scanGeo = new THREE.PlaneGeometry(W, 0.008);
+  const scanMat = new THREE.MeshBasicMaterial({
+    color: 0x00f5ff, transparent: true, opacity: 0.9, side: THREE.DoubleSide
+  });
+  const scanMesh = new THREE.Mesh(scanGeo, scanMat);
+  scanMesh.position.z = 0.002;
+  group.add(scanMesh);
+
+  group.userData = {
+    floatBase:   pos.y,
+    floatPhase:  Math.random() * Math.PI * 2,
+    scanY:       -H2/2,
+    scanDir:     1,
+    scanRange:   H2/2,
+    scanMesh,
+    wireMesh:    group.children[1],
+    edgeMesh:    edgeLines,
+    spawnT:      performance.now(),
+    width: W, height: H2
+  };
+
+  scene.add(group);
+  planes.push(group);
+  planeNumEl.textContent = planes.length;
+
+  // Spawn scale animation
+  group.scale.set(0.01, 0.01, 0.01);
+  let t = 0;
+  const grow = () => {
+    t += 0.07;
+    const s = t < 1 ? t * t * (3 - 2 * t) : 1;
+    group.scale.setScalar(s);
+    if (t < 1) requestAnimationFrame(grow);
+  };
+  requestAnimationFrame(grow);
+
+  flash();
+  setStatus(`PLANE #${planes.length} ANCHORED`);
+}
+
+function flash() {
+  flashEl.style.transition = 'none';
+  flashEl.style.opacity = '1';
+  requestAnimationFrame(() => {
+    flashEl.style.transition = 'opacity .5s';
+    flashEl.style.opacity = '0';
+  });
+}
+
+// ── Controls ───────────────────────────────────────────────
+function undoPlane() {
+  if (!planes.length) return;
+  scene.remove(planes.pop());
+  planeNumEl.textContent = planes.length;
+  setStatus('PLANE REMOVED');
+}
+
+function clearPlanes() {
+  planes.forEach(p => scene.remove(p));
+  planes = [];
+  planeNumEl.textContent = '0';
+  setStatus('ALL PLANES CLEARED');
+}
+
+function tapPlace() {
+  // Place in centre of view
+  spawnPlane(0, 0);
+}
+
+let floatEnabled2 = true;
+function toggleFloat() {
+  floatEnabled2 = !floatEnabled2;
+  setStatus(floatEnabled2 ? 'FLOAT ANIMATION ON' : 'FLOAT ANIMATION OFF');
+}
+
+// ── Hand tracking loop ─────────────────────────────────────
+const handCtx = handCv.getContext('2d');
+let lastDetectTime = 0;
+const DETECT_INTERVAL = 80; // ms between detections (~12fps for hand)
+
+async function detectHands(now) {
+  if (!tfLoaded || !detector) return null;
+  if (now - lastDetectTime < DETECT_INTERVAL) return null;
+  if (vid.readyState < 2) return null;
+  lastDetectTime = now;
+  try {
+    const predictions = await detector.estimateHands(vid, { flipHorizontal: false });
+    return predictions;
+  } catch(e) {
+    return null;
+  }
+}
+
+// ── Gesture classify ───────────────────────────────────────
+// landmarks = array of [x,y,z] from handpose (not normalized 0-1, in pixels)
+function classifyGesture(lms) {
+  // lms[i] = [x, y, z]
+  // Key points: 0=wrist, 4=thumb, 8=index, 12=middle, 16=ring, 20=pinky
+  // MCP (knuckles): 5=index, 9=middle, 13=ring, 17=pinky
+
+  const tip = i => lms[i];
+  const mcp = i => lms[i];
+
+  // A finger is extended if its tip y < its mcp y (smaller y = higher on screen)
+  const ext = (tipI, mcpI) => tip(tipI)[1] < mcp(mcpI)[1] - 35;
+
+  const idx    = ext(8, 5);
+  const mid    = ext(12, 9);
+  const ring   = ext(16, 13);
+  const pinky  = ext(20, 17);
+
+  if (idx && !mid && !ring && !pinky) return 'PLACE';   // ☝️
+  if (idx && mid && !ring && !pinky)  return 'DELETE';  // ✌️
+  if (!idx && !mid && !ring && !pinky) return 'CLEAR';  // ✊
+  return 'IDLE';
+}
+
+// ── Draw hand skeleton ─────────────────────────────────────
+const CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [5,9],[9,10],[10,11],[11,12],
+  [9,13],[13,14],[14,15],[15,16],
+  [13,17],[17,18],[18,19],[19,20],
+  [0,17]
+];
+const TIP_INDICES = new Set([4,8,12,16,20]);
+
+function drawHand(lms) {
+  const W = handCv.width, H = handCv.height;
+  handCtx.clearRect(0, 0, W, H);
+
+  // Scale landmarks from video space to screen space
+  const vw = vid.videoWidth  || W;
+  const vh = vid.videoHeight || H;
+  const scaleX = W / vw;
+  const scaleY = H / vh;
+
+  const sx = i => lms[i][0] * scaleX;
+  const sy = i => lms[i][1] * scaleY;
+
+  // Connections
+  handCtx.save();
+  handCtx.strokeStyle = 'rgba(0,245,255,.7)';
+  handCtx.lineWidth = 2;
+  handCtx.shadowBlur = 10;
+  handCtx.shadowColor = '#00f5ff';
+  CONNECTIONS.forEach(([a,b]) => {
+    handCtx.beginPath();
+    handCtx.moveTo(sx(a), sy(a));
+    handCtx.lineTo(sx(b), sy(b));
+    handCtx.stroke();
+  });
+
+  // Joints
+  lms.forEach((lm, i) => {
+    const x = lm[0] * scaleX, y = lm[1] * scaleY;
+    const isTip = TIP_INDICES.has(i);
+    handCtx.beginPath();
+    handCtx.arc(x, y, isTip ? 7 : 4, 0, Math.PI*2);
+    handCtx.fillStyle = isTip ? '#ffffff' : 'rgba(0,180,255,.9)';
+    handCtx.shadowBlur = isTip ? 18 : 8;
+    handCtx.shadowColor = '#00f5ff';
+    handCtx.fill();
+  });
+
+  // Index tip ring + gesture ring
+  const itx = lms[8][0] * scaleX, ity = lms[8][1] * scaleY;
+  handCtx.beginPath();
+  handCtx.arc(itx, ity, 18, 0, Math.PI*2);
+  handCtx.strokeStyle = 'rgba(0,245,255,.4)';
+  handCtx.lineWidth = 1.5;
+  handCtx.shadowBlur = 12;
+  handCtx.stroke();
+
+  // Hold progress arc around index tip
+  if (currentGesture !== 'IDLE' && currentGesture !== 'NONE' && holdFrames > 0) {
+    const pct = holdFrames / HOLD_NEEDED;
+    handCtx.beginPath();
+    handCtx.arc(itx, ity, 26, -Math.PI/2, -Math.PI/2 + pct * Math.PI*2);
+    handCtx.strokeStyle = `rgba(0,245,255,${0.4 + pct*0.6})`;
+    handCtx.lineWidth = 3;
+    handCtx.shadowBlur = 16;
+    handCtx.shadowColor = '#00f5ff';
+    handCtx.stroke();
+  }
+
+  handCtx.restore();
+
+  return { x: lms[8][0] * scaleX, y: lms[8][1] * scaleY };
+}
+
+// ── Update gesture UI ──────────────────────────────────────
+const GESTURE_LABELS = {
+  PLACE: '☝ PLACE', DELETE: '✌ UNDO', CLEAR: '✊ CLEAR', IDLE: '🖐 OPEN', NONE: '---'
+};
+function updateGestureUI(gesture) {
+  gestureEl.textContent = GESTURE_LABELS[gesture] || '---';
+  const pct = Math.round((holdFrames / HOLD_NEEDED) * 100);
+  holdPctEl.textContent = `HOLD: ${pct}%`;
+  const offset = ARC_CIRC - (ARC_CIRC * holdFrames / HOLD_NEEDED);
+  arcEl.style.strokeDashoffset = Math.max(0, offset);
+  gtextEl.textContent = GESTURE_LABELS[gesture] || 'AWAITING HAND';
+}
+
+// ── Process detected hands ─────────────────────────────────
+function processHands(predictions) {
+  handCtx.clearRect(0, 0, handCv.width, handCv.height);
+
+  if (!predictions || predictions.length === 0) {
+    handStEl.textContent = 'HAND: SEARCHING';
+    currentGesture = 'NONE';
+    holdFrames = 0;
+    updateGestureUI('NONE');
+    return;
+  }
+
+  handStEl.textContent = 'HAND: LOCKED';
+  const lms = predictions[0].landmarks; // array of [x,y,z]
+  const indexPos = drawHand(lms);
+
+  const g = classifyGesture(lms);
+  if (g === currentGesture) {
+    holdFrames = Math.min(holdFrames + 1, HOLD_NEEDED);
+  } else {
+    currentGesture = g;
+    holdFrames = 0;
+  }
+
+  updateGestureUI(g);
+
+  if (cooldown > 0) { cooldown--; return; }
+
+  if (holdFrames >= HOLD_NEEDED) {
+    if (g === 'PLACE') {
+      // Convert index finger tip to NDC
+      const ndcX = (indexPos.x / window.innerWidth)  * 2 - 1;
+      const ndcY = -(indexPos.y / window.innerHeight) * 2 + 1;
+      spawnPlane(ndcX, ndcY);
+      holdFrames = 0;
+      cooldown = 35;
+    } else if (g === 'DELETE') {
+      undoPlane();
+      holdFrames = 0;
+      cooldown = 30;
+    } else if (g === 'CLEAR') {
+      clearPlanes();
+      holdFrames = 0;
+      cooldown = 50;
+    }
+  }
+}
+
+// ── Animate planes ─────────────────────────────────────────
+function animatePlanes(elapsed) {
+  planes.forEach((g, i) => {
+    const ud = g.userData;
+    const t = elapsed + ud.floatPhase;
+
+    // Float
+    if (floatEnabled2) {
+      g.position.y = ud.floatBase + Math.sin(t * 0.6) * 0.04;
+      g.rotation.z += Math.sin(t * 0.3 + i) * 0.0005;
+    }
+
+    // Scan line
+    ud.scanY += ud.scanDir * 0.012;
+    if (ud.scanY > ud.scanRange)  ud.scanDir = -1;
+    if (ud.scanY < -ud.scanRange) ud.scanDir =  1;
+    ud.scanMesh.position.y = ud.scanY;
+    ud.scanMesh.material.opacity = 0.5 + 0.5 * Math.sin(elapsed * 3 + i * 1.3);
+
+    // Wireframe pulse
+    if (ud.wireMesh && ud.wireMesh.material) {
+      ud.wireMesh.material.opacity = 0.3 + 0.25 * Math.sin(elapsed * 1.8 + i);
+    }
+    // Edge pulse
+    if (ud.edgeMesh && ud.edgeMesh.material) {
+      ud.edgeMesh.material.opacity = 0.7 + 0.3 * Math.sin(elapsed * 2.2 + i * 0.7);
+    }
+  });
+}
+
+// ── Main render loop ───────────────────────────────────────
+let lastHands = null;
+async function loop(now) {
+  if (!isRunning) return;
+
+  // FPS
+  frameCount++;
+  if (now - lastFpsTime > 1000) {
+    fps = Math.round(frameCount * 1000 / (now - lastFpsTime));
+    fpsEl.textContent = fps + ' FPS';
+    frameCount = 0;
+    lastFpsTime = now;
+  }
+
+  // Hand detection (async, non-blocking)
+  detectHands(now).then(preds => {
+    if (preds !== null) processHands(preds);
+  });
+
+  // Camera tilt smoothing
+  if (camera) {
+    camera.rotation.x += (targetRotX - camera.rotation.x) * 0.05;
+    camera.rotation.z += (targetRotZ - camera.rotation.z) * 0.05;
+  }
+
+  // Animate planes
+  const elapsed = animClock ? animClock.getElapsedTime() : 0;
+  animatePlanes(elapsed);
+
+  // Render
+  renderer.render(scene, camera);
+
+  requestAnimationFrame(loop);
+}
+
+// ── Main init ──────────────────────────────────────────────
+async function initAR() {
+  $('start').style.display = 'none';
+  hideError();
+
+  try {
+    await initCamera();
+  } catch(e) {
+    return; // error shown in initCamera
+  }
+
+  initThree();
+  setProgress(35);
+
+  // Load hand tracking (non-blocking — fallback to tap if fails)
+  loadHandTracking().then(ok => {
+    if (!ok) {
+      setStatus('TAP "TAP PLACE" TO ADD PLANES (hand tracking unavailable)');
+      handStEl.textContent = 'HAND: UNAVAILABLE';
+    } else {
+      setStatus('RAISE INDEX FINGER → HOLD 1s TO PLACE PLANE');
+    }
+  });
+
+  isRunning = true;
+  requestAnimationFrame(loop);
+  setProgress(100);
+  setTimeout(() => { progEl.style.opacity = '0'; }, 1500);
+}
+
+function retryCamera() {
+  hideError();
+  $('start').style.display = 'flex';
+}
+
+// ── Touch place (always available as fallback) ─────────────
+let lastTap = 0;
+document.addEventListener('touchend', e => {
+  if (!isRunning) return;
+  // double-tap anywhere to place
+  const now = Date.now();
+  if (now - lastTap < 300) {
+    const t = e.changedTouches[0];
+    const ndcX = (t.clientX / window.innerWidth) * 2 - 1;
+    const ndcY = -(t.clientY / window.innerHeight) * 2 + 1;
+    spawnPlane(ndcX, ndcY);
+  }
+  lastTap = now;
+}, { passive: true });
+</script>
+</body>
+</html>
