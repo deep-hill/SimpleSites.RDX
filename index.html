@@ -7,7 +7,7 @@
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
-  #menu { width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; position: relative; transition: width 0.15s ease; }
+  #menu { width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; border-right: #fff 1px solid; position: relative; transition: width 0.15s ease; }
   #menu h2 { font-size: 14px; padding: 0 15px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 5px 0 10px; }
   #menu .item { padding: 10px 15px; cursor: pointer; word-break: break-word; }
   #menu .item:hover { background: #2a2a2a; }
@@ -24,7 +24,7 @@
 </style>
 </head>
 <body>
-  <div style="border-right: 1px solid white;" id="menu">
+  <div id="menu">
     <button id="collapseBtn" title="Collapse">◀</button>
     <h2>Sites</h2>
   </div>
@@ -36,22 +36,33 @@ fetch('sites.json')
   .then(r => r.json())
   .then(sites => {
     const menu = document.getElementById('menu');
-    const view = document.getElementById('view');
 
-    sites.forEach(site => {
+    if (sites.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'error';
+      empty.textContent = 'No sites found yet.';
+      menu.appendChild(empty);
+      return;
+    }
+
+    sites.forEach(name => {
       const item = document.createElement('div');
       item.className = 'item';
-      item.textContent = site.name;
-      item.addEventListener('click', () => {
-        document.querySelectorAll('#menu .item').forEach(el => el.classList.remove('active'));
+      item.textContent = name;
+      item.onclick = () => {
+        document.querySelectorAll('#menu .item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-        view.innerHTML = `<iframe src="${site.url}"></iframe>`;
-      });
+        document.getElementById('view').innerHTML =
+          `<iframe src="/${name}/"></iframe>`;
+      };
       menu.appendChild(item);
     });
   })
-  .catch(err => {
-    document.getElementById('view').innerHTML = `<div id="error">Failed to load sites.json: ${err.message}</div>`;
+  .catch(() => {
+    const err = document.createElement('div');
+    err.id = 'error';
+    err.textContent = 'Could not load sites.json — make sure build.py ran successfully.';
+    document.getElementById('menu').appendChild(err);
   });
 
 // --- Resizable sidebar ---
