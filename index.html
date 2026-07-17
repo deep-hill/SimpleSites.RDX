@@ -7,11 +7,16 @@
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
-  #menu { width: 220px; min-width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; border-right: #fff 1px solid;}
+  #menu { width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; position: relative; transition: width 0.15s ease; }
   #menu h2 { font-size: 14px; padding: 0 15px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 5px 0 10px; }
   #menu .item { padding: 10px 15px; cursor: pointer; word-break: break-word; }
   #menu .item:hover { background: #2a2a2a; }
   #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
+  #menu.collapsed { width: 40px !important; overflow: hidden; }
+  #menu.collapsed h2, #menu.collapsed .item { display: none; }
+  #collapseBtn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 10px 15px; }
+  #resizer { width: 5px; cursor: col-resize; background: #1a1a1a; }
+  #resizer:hover, #resizer.active { background: #4da3ff; }
   #view { flex: 1; }
   #view iframe { width: 100%; height: 100%; border: none; display: block; }
   #placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; }
@@ -19,7 +24,11 @@
 </style>
 </head>
 <body>
-  <div style="border-right: 1px solid white;" id="menu"><h2>Sites</h2></div>
+  <div style="border-right: 1px solid white;" id="menu">
+    <button id="collapseBtn" title="Collapse">◀</button>
+    <h2>Sites</h2>
+  </div>
+  <div id="resizer"></div>
   <div id="view"><div id="placeholder">Select a site from the menu</div></div>
 
 <script>
@@ -27,34 +36,67 @@ fetch('sites.json')
   .then(r => r.json())
   .then(sites => {
     const menu = document.getElementById('menu');
+    const view = document.getElementById('view');
 
-    if (sites.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'error';
-      empty.textContent = 'No sites found yet.';
-      menu.appendChild(empty);
-      return;
-    }
-
-    sites.forEach(name => {
+    sites.forEach(site => {
       const item = document.createElement('div');
       item.className = 'item';
-      item.textContent = name;
-      item.onclick = () => {
-        document.querySelectorAll('#menu .item').forEach(i => i.classList.remove('active'));
+      item.textContent = site.name;
+      item.addEventListener('click', () => {
+        document.querySelectorAll('#menu .item').forEach(el => el.classList.remove('active'));
         item.classList.add('active');
-        document.getElementById('view').innerHTML =
-          `<iframe src="/${name}/"></iframe>`;
-      };
+        view.innerHTML = `<iframe src="${site.url}"></iframe>`;
+      });
       menu.appendChild(item);
     });
   })
-  .catch(() => {
-    const err = document.createElement('div');
-    err.id = 'error';
-    err.textContent = 'Could not load sites.json — make sure build.py ran successfully.';
-    document.getElementById('menu').appendChild(err);
+  .catch(err => {
+    document.getElementById('view').innerHTML = `<div id="error">Failed to load sites.json: ${err.message}</div>`;
   });
+
+// --- Resizable sidebar ---
+const resizer = document.getElementById('resizer');
+const menu = document.getElementById('menu');
+const collapseBtn = document.getElementById('collapseBtn');
+let isResizing = false;
+let lastWidth = 220;
+
+resizer.addEventListener('mousedown', () => {
+  isResizing = true;
+  resizer.classList.add('active');
+  document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!isResizing) return;
+  let newWidth = e.clientX;
+  if (newWidth < 40) newWidth = 40;
+  if (newWidth > 500) newWidth = 500;
+  menu.style.width = newWidth + 'px';
+  menu.classList.toggle('collapsed', newWidth <= 60);
+});
+
+document.addEventListener('mouseup', () => {
+  if (isResizing) {
+    isResizing = false;
+    resizer.classList.remove('active');
+    document.body.style.userSelect = '';
+    if (menu.offsetWidth > 60) lastWidth = menu.offsetWidth;
+  }
+});
+
+collapseBtn.addEventListener('click', () => {
+  if (menu.classList.contains('collapsed')) {
+    menu.classList.remove('collapsed');
+    menu.style.width = lastWidth + 'px';
+    collapseBtn.textContent = '◀';
+  } else {
+    lastWidth = menu.offsetWidth > 60 ? menu.offsetWidth : lastWidth;
+    menu.classList.add('collapsed');
+    menu.style.width = '40px';
+    collapseBtn.textContent = '▶';
+  }
+});
 </script>
 </body>
 </html>
