@@ -7,9 +7,9 @@
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
-  #menu { width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; border-right: #fff 1px solid; position: relative; transition: width 0.15s ease; }
+  #menu { width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; border-right: 1px solid #fff; position: relative; transition: width 0.15s ease; }
   #menu h2 { font-size: 14px; padding: 0 15px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 5px 0 10px; }
-  #menu .item { padding: 10px 15px; cursor: pointer; word-break: break-word; }
+  #menu .item { padding: 10px 15px; cursor: pointer; word-break: break-word; color: #fff; }
   #menu .item:hover { background: #2a2a2a; }
   #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
   #menu.collapsed { width: 40px !important; overflow: hidden; }
@@ -25,7 +25,7 @@
 </head>
 <body>
   <div id="menu">
-    <button id="collapseBtn" title="Collapse">◀</button>
+    <button id="collapseBtn" title="Collapse">▶</button>
     <h2>Sites</h2>
   </div>
   <div id="resizer"></div>
@@ -45,15 +45,18 @@ fetch('sites.json')
       return;
     }
 
-    sites.forEach(name => {
+    sites.forEach(site => {
+      // support both ["name", ...] and [{name, url}, ...] formats
+      const name = typeof site === 'string' ? site : site.name;
+      const url = typeof site === 'string' ? `/${site}/` : (site.url || `/${site.name}/`);
+
       const item = document.createElement('div');
       item.className = 'item';
       item.textContent = name;
       item.onclick = () => {
         document.querySelectorAll('#menu .item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-        document.getElementById('view').innerHTML =
-          `<iframe src="/${name}/"></iframe>`;
+        document.getElementById('view').innerHTML = `<iframe src="${url}"></iframe>`;
       };
       menu.appendChild(item);
     });
@@ -84,7 +87,9 @@ document.addEventListener('mousemove', (e) => {
   if (newWidth < 40) newWidth = 40;
   if (newWidth > 500) newWidth = 500;
   menu.style.width = newWidth + 'px';
-  menu.classList.toggle('collapsed', newWidth <= 60);
+  const collapsed = newWidth <= 60;
+  menu.classList.toggle('collapsed', collapsed);
+  collapseBtn.textContent = collapsed ? '◀' : '▶';
 });
 
 document.addEventListener('mouseup', () => {
@@ -100,12 +105,12 @@ collapseBtn.addEventListener('click', () => {
   if (menu.classList.contains('collapsed')) {
     menu.classList.remove('collapsed');
     menu.style.width = lastWidth + 'px';
-    collapseBtn.textContent = '◀';
+    collapseBtn.textContent = '▶';
   } else {
     lastWidth = menu.offsetWidth > 60 ? menu.offsetWidth : lastWidth;
     menu.classList.add('collapsed');
     menu.style.width = '40px';
-    collapseBtn.textContent = '▶';
+    collapseBtn.textContent = '◀';
   }
 });
 </script>
