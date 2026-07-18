@@ -6,45 +6,17 @@
 <title>SimpleSites.RDX</title>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; }
-
-  #menu {
-    width: 220px;
-    background: #1a1a1a;
-    color: #fff;
-    padding: 10px 0;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-  }
-  #menu.resizing { transition: none !important; }
-  #menu:not(.resizing) { transition: width 0.15s ease; }
-
-  #menuHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 15px; margin-bottom: 10px; flex-shrink: 0; }
-  #menu h2 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; white-space: nowrap; overflow: hidden; }
-
-  #menuList {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  #menuList::-webkit-scrollbar { display: none; }
-
-  #menu .item { padding: 10px 15px; cursor: pointer; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; }
+  #menu { width: 220px; background: #1a1a1a; color: #fff; overflow-y: auto; padding: 10px 0; border-right: 1px solid #fff; position: relative; transition: width 0.15s ease; }
+  #menu h2 { font-size: 14px; padding: 0 15px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 5px 0 10px; }
+  #menu .item { padding: 10px 15px; cursor: pointer; word-break: break-word; color: #fff; }
   #menu .item:hover { background: #2a2a2a; }
   #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
-
   #menu.collapsed { width: 40px !important; overflow: hidden; }
   #menu.collapsed h2, #menu.collapsed .item { display: none; }
-
-  #collapseBtn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 4px 8px; flex-shrink: 0; }
-
-  #resizer { width: 3px; cursor: ew-resize; background: #1a1a1a; flex-shrink: 0; border-right: 1px solid #fff; }
-  #resizer:hover, #resizer.active { width: 3px; background: #888; }
-
+  #collapseBtn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 10px 15px; }
+  #resizer { width: 5px; cursor: col-resize; background: #1a1a1a; }
+  #resizer:hover, #resizer.active { background: #4da3ff; }
   #view { flex: 1; }
   #view iframe { width: 100%; height: 100%; border: none; display: block; }
   #placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; }
@@ -53,11 +25,8 @@
 </head>
 <body>
   <div id="menu">
-    <div id="menuHeader">
-      <h2>Sites</h2>
-      <button id="collapseBtn" title="Collapse">◀</button>
-    </div>
-    <div id="menuList"></div>
+    <button id="collapseBtn" title="Collapse">▶</button>
+    <h2>Sites</h2>
   </div>
   <div id="resizer"></div>
   <div id="view"><div id="placeholder">Select a site from the menu</div></div>
@@ -66,17 +35,18 @@
 fetch('sites.json')
   .then(r => r.json())
   .then(sites => {
-    const menuList = document.getElementById('menuList');
+    const menu = document.getElementById('menu');
 
     if (sites.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'error';
       empty.textContent = 'No sites found yet.';
-      menuList.appendChild(empty);
+      menu.appendChild(empty);
       return;
     }
 
     sites.forEach(site => {
+      // support both ["name", ...] and [{name, url}, ...] formats
       const name = typeof site === 'string' ? site : site.name;
       const url = typeof site === 'string' ? `/${site}/` : (site.url || `/${site.name}/`);
 
@@ -88,29 +58,25 @@ fetch('sites.json')
         item.classList.add('active');
         document.getElementById('view').innerHTML = `<iframe src="${url}"></iframe>`;
       };
-      menuList.appendChild(item);
+      menu.appendChild(item);
     });
   })
   .catch(() => {
     const err = document.createElement('div');
     err.id = 'error';
     err.textContent = 'Could not load sites.json — make sure build.py ran successfully.';
-    document.getElementById('menuList').appendChild(err);
+    document.getElementById('menu').appendChild(err);
   });
 
+// --- Resizable sidebar ---
 const resizer = document.getElementById('resizer');
 const menu = document.getElementById('menu');
 const collapseBtn = document.getElementById('collapseBtn');
 let isResizing = false;
 let lastWidth = 220;
 
-function setArrow(collapsed) {
-  collapseBtn.textContent = collapsed ? '▶' : '◀';
-}
-
 resizer.addEventListener('mousedown', () => {
   isResizing = true;
-  menu.classList.add('resizing');
   resizer.classList.add('active');
   document.body.style.userSelect = 'none';
 });
@@ -123,13 +89,12 @@ document.addEventListener('mousemove', (e) => {
   menu.style.width = newWidth + 'px';
   const collapsed = newWidth <= 60;
   menu.classList.toggle('collapsed', collapsed);
-  setArrow(collapsed);
+  collapseBtn.textContent = collapsed ? '◀' : '▶';
 });
 
 document.addEventListener('mouseup', () => {
   if (isResizing) {
     isResizing = false;
-    menu.classList.remove('resizing');
     resizer.classList.remove('active');
     document.body.style.userSelect = '';
     if (menu.offsetWidth > 60) lastWidth = menu.offsetWidth;
@@ -137,16 +102,15 @@ document.addEventListener('mouseup', () => {
 });
 
 collapseBtn.addEventListener('click', () => {
-  const collapsed = menu.classList.contains('collapsed');
-  if (collapsed) {
+  if (menu.classList.contains('collapsed')) {
     menu.classList.remove('collapsed');
     menu.style.width = lastWidth + 'px';
-    setArrow(false);
+    collapseBtn.textContent = '▶';
   } else {
     lastWidth = menu.offsetWidth > 60 ? menu.offsetWidth : lastWidth;
     menu.classList.add('collapsed');
     menu.style.width = '40px';
-    setArrow(true);
+    collapseBtn.textContent = '◀';
   }
 });
 </script>
