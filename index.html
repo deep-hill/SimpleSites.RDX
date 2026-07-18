@@ -24,16 +24,27 @@
   #menuHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 15px; margin-bottom: 10px; flex-shrink: 0; }
   #menu h2 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; white-space: nowrap; overflow: hidden; }
 
-  #menuList { flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+  #menuList {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
   #menuList::-webkit-scrollbar { display: none; }
-  #menu .item { padding: 10px 15px; cursor: pointer; word-break: break-word; color: #fff; white-space: nowrap; overflow: hidden; }
+
+  #menu .item { padding: 10px 15px; cursor: pointer; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #menu .item:hover { background: #2a2a2a; }
   #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
+
   #menu.collapsed { width: 40px !important; overflow: hidden; }
   #menu.collapsed h2, #menu.collapsed .item { display: none; }
+
   #collapseBtn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 4px 8px; flex-shrink: 0; }
-  #resizer { width: 1px; cursor: ew-resize; background: #fff; flex-shrink: 0; }
-  #resizer:hover, #resizer.active { width: 3px; background: #4da3ff; }
+
+  #resizer { width: 3px; cursor: ew-resize; background: #1a1a1a; flex-shrink: 0; border-right: 1px solid #fff; }
+  #resizer:hover, #resizer.active { width: 3px; background: #888; }
+
   #view { flex: 1; }
   #view iframe { width: 100%; height: 100%; border: none; display: block; }
   #placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; }
@@ -44,7 +55,7 @@
   <div id="menu">
     <div id="menuHeader">
       <h2>Sites</h2>
-      <button id="collapseBtn" title="Collapse">‹</button>
+      <button id="collapseBtn" title="Collapse">◀</button>
     </div>
     <div id="menuList"></div>
   </div>
@@ -94,7 +105,7 @@ let isResizing = false;
 let lastWidth = 220;
 
 function setArrow(collapsed) {
-  collapseBtn.textContent = collapsed ? '›' : '‹';
+  collapseBtn.textContent = collapsed ? '▶' : '◀';
 }
 
 resizer.addEventListener('mousedown', () => {
