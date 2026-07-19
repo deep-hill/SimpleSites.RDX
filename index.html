@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SimpleSites.RDX</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; }
@@ -11,7 +13,7 @@
   #menu {
     width: 220px;
     background: #1a1a1a;
-    color: #1a1a1a;
+    color: #fff;
     padding: 10px 0;
     position: relative;
     display: flex;
@@ -22,82 +24,282 @@
   #menu:not(.resizing) { transition: width 0.15s ease; }
 
   #menuHeader { display: flex; align-items: center; justify-content: space-between; padding: 0 15px; margin-bottom: 10px; flex-shrink: 0; }
-  #menu h2 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; white-space: nowrap; overflow: hidden; }
+  #modeTabs { display: flex; gap: 14px; }
+  .tab-btn { background: none; border: none; color: #888; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; padding: 0; font-family: inherit; }
+  .tab-btn.active-tab { color: #fff; }
 
-  #menuList {
+  #collapseBtn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 4px 8px; flex-shrink: 0; }
+
+  #menuList, #codeTree {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-  #menuList::-webkit-scrollbar { display: none; }
+  #menuList::-webkit-scrollbar, #codeTree::-webkit-scrollbar { display: none; }
+  #codeTree { display: none; }
 
   #menu .item { padding: 10px 15px; cursor: pointer; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #menu .item:hover { background: #2a2a2a; }
-  #menu .item.active { background: #333; border-left: 3px solid #888; }
+  #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
+
+  .tree-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; color: #fff; font-size: 13px; }
+  .tree-row:hover { background: #2a2a2a; }
+  .tree-file-row.active { background: #333; border-left: 3px solid #4da3ff; }
+  .tree-caret { display: inline-block; width: 10px; color: #888; font-size: 10px; flex-shrink: 0; text-align: center; }
+  .tree-folder-label { flex-shrink: 0; }
+  .tree-file-badge { font-size: 9px; font-weight: 700; flex-shrink: 0; width: 28px; text-align: center; }
+  .tree-file-label { overflow: hidden; text-overflow: ellipsis; }
 
   #menu.collapsed { width: 40px !important; overflow: hidden; }
-  #menu.collapsed h2, #menu.collapsed .item { display: none; }
+  #menu.collapsed #modeTabs,
+  #menu.collapsed #menuList,
+  #menu.collapsed #codeTree { display: none; }
 
-  #collapseBtn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 4px 8px; flex-shrink: 0; }
-
-  #resizer { width: 7px; cursor: ew-resize; background: #1a1a1a; flex-shrink: 0; border-right: 1px solid #fff; }
+  #resizer { width: 3px; cursor: ew-resize; background: #1a1a1a; flex-shrink: 0; border-right: 1px solid #fff; }
   #resizer:hover, #resizer.active { width: 3px; background: #888; }
 
   #view { flex: 1; }
   #view iframe { width: 100%; height: 100%; border: none; display: block; }
   #placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; }
   #error { padding: 15px; color: #f66; font-size: 13px; }
+
+  #codeViewPanel { display: none; flex: 1; flex-direction: column; background: #1a1a1a; color: #fff; min-width: 0; }
+  #codeHeader { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #333; font-size: 12px; color: #ccc; flex-shrink: 0; }
+  #codeFilePath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #copyCodeBtn { background: #2a2a2a; border: 1px solid #444; color: #ccc; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px; }
+  #copyCodeBtn:hover { background: #333; color: #fff; }
+
+  #codeBody { flex: 1; overflow: hidden; position: relative; }
+  #codeScroll { height: 100%; overflow: auto; display: flex; scrollbar-width: thin; scrollbar-color: #444 #1a1a1a; }
+  #codeScroll::-webkit-scrollbar { width: 10px; height: 10px; }
+  #codeScroll::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+  #codeScroll::-webkit-scrollbar-track { background: #1a1a1a; }
+
+  #lineNumbers { position: sticky; left: 0; z-index: 2; background: #1a1a1a; color: #6e7681; text-align: right; padding: 12px 10px 12px 16px; user-select: none; flex-shrink: 0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 20px; white-space: pre; }
+  #codePre { margin: 0; padding: 12px 20px; flex: 1 0 auto; }
+  #codeContent { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 20px; white-space: pre; }
+  .hljs { background: transparent !important; }
 </style>
 </head>
 <body>
   <div id="menu">
     <div id="menuHeader">
-      <h2>Sites</h2>
+      <div id="modeTabs">
+        <button class="tab-btn active-tab" id="tabSites" type="button">Sites</button>
+        <button class="tab-btn" id="tabCode" type="button">Code</button>
+      </div>
       <button id="collapseBtn" title="Collapse">◀</button>
     </div>
     <div id="menuList"></div>
+    <div id="codeTree"></div>
   </div>
   <div id="resizer"></div>
+
   <div id="view"><div id="placeholder">Select a site from the menu</div></div>
 
+  <div id="codeViewPanel">
+    <div id="codeHeader">
+      <span id="codeFilePath">Select a file to view its code</span>
+      <button id="copyCodeBtn" type="button">Copy</button>
+    </div>
+    <div id="codeBody">
+      <div id="codeScroll">
+        <div id="lineNumbers"></div>
+        <pre id="codePre"><code id="codeContent"></code></pre>
+      </div>
+    </div>
+  </div>
+
 <script>
+// ---------- Sites list ----------
 fetch('sites.json')
   .then(r => r.json())
   .then(sites => {
     const menuList = document.getElementById('menuList');
+    const view = document.getElementById('view');
 
     if (sites.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'error';
-      empty.textContent = 'No sites found yet.';
-      menuList.appendChild(empty);
+      menuList.innerHTML = '<div id="error">No sites found yet.</div>';
       return;
     }
 
     sites.forEach(site => {
-      const name = typeof site === 'string' ? site : site.name;
-      const url = typeof site === 'string' ? `/${site}/` : (site.url || `/${site.name}/`);
-
       const item = document.createElement('div');
       item.className = 'item';
-      item.textContent = name;
-      item.onclick = () => {
-        document.querySelectorAll('#menu .item').forEach(i => i.classList.remove('active'));
+      item.textContent = site.name;
+      item.addEventListener('click', () => {
+        document.querySelectorAll('#menuList .item').forEach(el => el.classList.remove('active'));
         item.classList.add('active');
-        document.getElementById('view').innerHTML = `<iframe src="${url}"></iframe>`;
-      };
+        view.innerHTML = `<iframe src="${site.url}"></iframe>`;
+      });
       menuList.appendChild(item);
     });
   })
-  .catch(() => {
-    const err = document.createElement('div');
-    err.id = 'error';
-    err.textContent = 'Could not load sites.json — make sure build.py ran successfully.';
-    document.getElementById('menuList').appendChild(err);
+  .catch(err => {
+    document.getElementById('menuList').innerHTML = `<div id="error">Failed to load sites.json: ${err.message}</div>`;
   });
 
+// ---------- Code tree ----------
+const BINARY_EXTENSIONS = new Set(['png','jpg','jpeg','gif','webp','ico','bmp','woff','woff2','ttf','eot','otf','pdf','zip','gz','mp4','mp3','wav','mov','avi']);
+const LANG_MAP = { html:'html', htm:'html', css:'css', js:'javascript', jsx:'javascript', ts:'javascript', tsx:'javascript', py:'python', json:'json', md:'markdown', xml:'xml', svg:'xml', yml:'yaml', yaml:'yaml' };
+
+let currentFileContent = '';
+let codeTreeLoaded = false;
+
+function extOf(name) {
+  return name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+}
+
+function getFileBadge(name) {
+  const ext = extOf(name);
+  const map = {
+    html: { label: 'HTM', color: '#e37933' },
+    htm:  { label: 'HTM', color: '#e37933' },
+    css:  { label: 'CSS', color: '#4fc1e9' },
+    js:   { label: 'JS',  color: '#e8d44d' },
+    jsx:  { label: 'JSX', color: '#e8d44d' },
+    py:   { label: 'PY',  color: '#3ea6ff' },
+    json: { label: '{ }', color: '#cbcb41' },
+    md:   { label: 'MD',  color: '#8a9eb0' }
+  };
+  return map[ext] || { label: '\u2022', color: '#888' };
+}
+
+function setCodeContent(text, lang, copyable) {
+  currentFileContent = copyable ? text : '';
+  const oldCode = document.getElementById('codeContent');
+  const pre = oldCode.parentElement;
+  const fresh = document.createElement('code');
+  fresh.id = 'codeContent';
+  fresh.textContent = text;
+  if (lang) fresh.className = 'language-' + lang;
+  pre.replaceChild(fresh, oldCode);
+
+  if (lang && window.hljs) {
+    hljs.highlightElement(fresh);
+  }
+
+  document.getElementById('lineNumbers').textContent = copyable
+    ? text.split('\n').map((_, i) => i + 1).join('\n')
+    : '';
+}
+
+function openFile(node, rowEl) {
+  document.querySelectorAll('.tree-file-row').forEach(r => r.classList.remove('active'));
+  if (rowEl) rowEl.classList.add('active');
+
+  document.getElementById('codeFilePath').textContent = node.path;
+  const ext = extOf(node.name);
+
+  if (BINARY_EXTENSIONS.has(ext)) {
+    setCodeContent('Binary file — preview not available.', null, false);
+    return;
+  }
+
+  fetch(node.path)
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(text => setCodeContent(text, LANG_MAP[ext] || null, true))
+    .catch(err => setCodeContent('Could not load file: ' + err.message, null, false));
+}
+
+function renderTree(nodes, container, depth) {
+  nodes.forEach(node => {
+    const row = document.createElement('div');
+    row.className = 'tree-row';
+    row.style.paddingLeft = (depth * 16 + 10) + 'px';
+
+    if (node.type === 'folder') {
+      const caret = document.createElement('span');
+      caret.className = 'tree-caret';
+      caret.textContent = '\u25B8';
+      row.appendChild(caret);
+
+      const label = document.createElement('span');
+      label.className = 'tree-folder-label';
+      label.textContent = node.name;
+      row.appendChild(label);
+
+      const childrenWrap = document.createElement('div');
+      childrenWrap.style.display = 'none';
+      renderTree(node.children, childrenWrap, depth + 1);
+
+      row.addEventListener('click', () => {
+        const isOpen = childrenWrap.style.display !== 'none';
+        childrenWrap.style.display = isOpen ? 'none' : 'block';
+        caret.textContent = isOpen ? '\u25B8' : '\u25BE';
+      });
+
+      container.appendChild(row);
+      container.appendChild(childrenWrap);
+    } else {
+      const info = getFileBadge(node.name);
+      const badge = document.createElement('span');
+      badge.className = 'tree-file-badge';
+      badge.textContent = info.label;
+      badge.style.color = info.color;
+      row.appendChild(badge);
+
+      const label = document.createElement('span');
+      label.className = 'tree-file-label';
+      label.textContent = node.name;
+      row.appendChild(label);
+
+      row.classList.add('tree-file-row');
+      row.addEventListener('click', () => openFile(node, row));
+      container.appendChild(row);
+    }
+  });
+}
+
+document.getElementById('copyCodeBtn').addEventListener('click', () => {
+  if (!currentFileContent) return;
+  navigator.clipboard.writeText(currentFileContent).catch(() => {});
+});
+
+// ---------- Mode switching (Sites <-> Code) ----------
+const tabSites = document.getElementById('tabSites');
+const tabCode = document.getElementById('tabCode');
+const menuListEl = document.getElementById('menuList');
+const codeTreeEl = document.getElementById('codeTree');
+const viewEl = document.getElementById('view');
+const codeViewPanelEl = document.getElementById('codeViewPanel');
+
+tabSites.addEventListener('click', () => {
+  tabSites.classList.add('active-tab');
+  tabCode.classList.remove('active-tab');
+  menuListEl.style.display = '';
+  codeTreeEl.style.display = 'none';
+  viewEl.style.display = '';
+  codeViewPanelEl.style.display = 'none';
+});
+
+tabCode.addEventListener('click', () => {
+  tabCode.classList.add('active-tab');
+  tabSites.classList.remove('active-tab');
+  menuListEl.style.display = 'none';
+  codeTreeEl.style.display = '';
+  viewEl.style.display = 'none';
+  codeViewPanelEl.style.display = 'flex';
+
+  if (!codeTreeLoaded) {
+    fetch('repo-tree.json')
+      .then(r => r.json())
+      .then(tree => {
+        renderTree(tree, codeTreeEl, 0);
+        codeTreeLoaded = true;
+      })
+      .catch(err => {
+        codeTreeEl.innerHTML = `<div id="error">Could not load repo-tree.json: ${err.message}</div>`;
+      });
+  }
+});
+
+// ---------- Resizable + collapsible sidebar ----------
 const resizer = document.getElementById('resizer');
 const menu = document.getElementById('menu');
 const collapseBtn = document.getElementById('collapseBtn');
@@ -105,7 +307,7 @@ let isResizing = false;
 let lastWidth = 220;
 
 function setArrow(collapsed) {
-  collapseBtn.textContent = collapsed ? '▶ ' : '◀';
+  collapseBtn.textContent = collapsed ? '\u25B6' : '\u25C0';
 }
 
 resizer.addEventListener('mousedown', () => {
