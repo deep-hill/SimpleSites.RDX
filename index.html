@@ -29,11 +29,11 @@
   #collapseBtn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 4px 8px; flex-shrink: 0; }
 
   #menuList, #codeTree {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   }
   #menuList::-webkit-scrollbar, #codeTree::-webkit-scrollbar { display: none; }
   #codeTree { display: none; }
@@ -41,8 +41,8 @@
   #menu .item { padding: 10px 15px; cursor: pointer; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #menu .item:hover { background: #2a2a2a; }
   #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
-
-  .tree-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; color: #fff; font-size: 13px; }
+  
+  .tree-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; color: #fff; font-size: 13px; }
   .tree-row:hover { background: #2a2a2a; }
   .tree-row:focus-visible { outline: 1px solid #4da3ff; outline-offset: -1px; }
   .tree-file-row.active { background: #333; border-left: 3px solid #4da3ff; }
@@ -50,7 +50,7 @@
   .tree-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; flex-shrink: 0; }
   .tree-caret { display: inline-block; color: #888; font-size: 10px; transition: transform 0.15s ease; }
   .tree-row.expanded .tree-caret { transform: rotate(90deg); }
-  .tree-folder-label { flex-shrink: 0; font-weight: 600; }
+  .tree-folder-label { flex-shrink: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
   .tree-file-badge { font-size: 9px; font-weight: 700; text-align: center; }
   .tree-file-label { overflow: hidden; text-overflow: ellipsis; }
   .tree-children { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.15s ease; }
