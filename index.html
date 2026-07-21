@@ -44,29 +44,36 @@
   #menu .item:hover { background: #2a2a2a; }
   #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
 
-  .tree-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; color: #fff; font-size: 13px; border-left: 3px solid transparent; }
+  /* ---------- Code tree ---------- */
+  .tree-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; color: #fff; font-size: 13px; }
   .tree-row:hover { background: #2a2a2a; }
-  .tree-file-row.active { background: #333; border-left-color: #4da3ff; }
-  .tree-caret {
-    display: inline-block; width: 10px; color: #888; font-size: 10px; flex-shrink: 0; text-align: center;
-    transition: transform 0.15s ease; transform: rotate(0deg);
-  }
-  .tree-caret.open { transform: rotate(90deg); }
-  .tree-folder-label { flex-shrink: 0; font-weight: 600; color: #e6e6e6; }
-  .tree-file-badge { font-size: 9px; font-weight: 700; flex-shrink: 0; width: 28px; text-align: center; }
-  .tree-file-label { overflow: hidden; text-overflow: ellipsis; color: #ccc; }
+  .tree-file-row.active { background: #333; border-left: 3px solid #4da3ff; }
 
+  .tree-caret {
+    display: inline-block;
+    width: 10px;
+    color: #888;
+    font-size: 10px;
+    flex-shrink: 0;
+    text-align: center;
+    transition: transform 0.15s ease;
+    transform: rotate(0deg);
+  }
+  .tree-caret.expanded { transform: rotate(90deg); }
+
+  .tree-folder-label { flex-shrink: 0; font-weight: 600; color: #eee; letter-spacing: 0.01em; }
+  .tree-file-badge { font-size: 9px; font-weight: 700; flex-shrink: 0; width: 28px; text-align: center; }
+  .tree-file-label { overflow: hidden; text-overflow: ellipsis; color: #aaa; }
+  .tree-file-row.active .tree-file-label { color: #fff; }
+
+  /* animated expand/collapse via CSS grid trick, no JS height math needed */
   .tree-children {
     display: grid;
     grid-template-rows: 0fr;
-    overflow: hidden;
-    transition: grid-template-rows 0.15s ease;
-    padding-left: 14px;
-    margin-left: 9px;
-    border-left: 1px solid #2a2a2a;
+    transition: grid-template-rows 0.18s ease;
   }
-  .tree-children.open { grid-template-rows: 1fr; }
-  .tree-children > div { min-height: 0; overflow: hidden; }
+  .tree-children.expanded { grid-template-rows: 1fr; }
+  .tree-children-inner { overflow: hidden; min-height: 0; }
 
   #menu.collapsed { width: 40px !important; overflow: hidden; }
   #menu.collapsed #modeTabs,
@@ -81,24 +88,48 @@
   #placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; }
   #error { padding: 15px; color: #f66; font-size: 13px; }
 
+  /* ---------- Code viewer panel ---------- */
   #codeViewPanel { display: none; flex: 1; flex-direction: column; background: #1a1a1a; color: #fff; min-width: 0; }
-  #codeHeader { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #333; font-size: 12px; color: #ccc; flex-shrink: 0; }
-  #codeFilePath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #copyCodeBtn { background: #2a2a2a; border: 1px solid #444; color: #ccc; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px; }
+
+  #codeHeader { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #333; font-size: 12px; color: #ccc; flex-shrink: 0; gap: 10px; }
+  #codeBreadcrumb { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; display: flex; align-items: center; }
+  #codeBreadcrumb .crumb-sep { color: #555; margin: 0 5px; flex-shrink: 0; }
+  #codeBreadcrumb .crumb-dir { color: #888; flex-shrink: 0; }
+  #codeBreadcrumb .crumb-file { color: #fff; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  #codeBreadcrumb.empty { color: #666; font-style: italic; }
+
+  #copyCodeBtn { background: #2a2a2a; border: 1px solid #444; color: #ccc; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
   #copyCodeBtn:hover { background: #333; color: #fff; }
-  #copyCodeBtn:disabled { color: #6fcf97; cursor: default; }
+  #copyCodeBtn:disabled { opacity: 0.4; cursor: default; }
+  #copyCodeBtn.copied { background: #234a2e; border-color: #2e6b3e; color: #7ee2a0; }
 
   #codeBody { flex: 1; overflow: hidden; position: relative; }
-  #codeEmptyState { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; font-size: 13px; }
-  #codeScroll { display: none; height: 100%; overflow: auto; scrollbar-width: thin; scrollbar-color: #444 #1a1a1a; }
+  #codeScroll { height: 100%; overflow: auto; display: flex; scrollbar-width: thin; scrollbar-color: #444 #1a1a1a; }
   #codeScroll::-webkit-scrollbar { width: 10px; height: 10px; }
   #codeScroll::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
   #codeScroll::-webkit-scrollbar-track { background: #1a1a1a; }
 
-  #lineNumbers { position: sticky; left: 0; z-index: 2; background: #1a1a1a; color: #6e7681; text-align: right; padding: 12px 10px 12px 16px; user-select: none; flex-shrink: 0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 20px; white-space: pre; }
+  #lineNumbers {
+    position: sticky; left: 0; z-index: 2;
+    background: #1a1a1a; color: #6e7681;
+    text-align: right; padding: 12px 10px 12px 16px;
+    user-select: none; flex-shrink: 0;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 20px; white-space: pre;
+    border-right: 1px solid #262626;
+  }
   #codePre { margin: 0; padding: 12px 20px; flex: 1 0 auto; }
   #codeContent { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 20px; white-space: pre; }
   .hljs { background: transparent !important; }
+
+  #codeEmptyState {
+    height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #666; font-size: 13px; gap: 6px; text-align: center; padding: 0 20px;
+  }
+  #codeEmptyState .emoji { font-size: 26px; opacity: 0.7; }
+
+  .code-status { padding: 12px 20px; color: #888; font-size: 13px; font-style: italic; }
+  .code-status.error { color: #f66; font-style: normal; }
 </style>
 </head>
 <body>
@@ -119,12 +150,15 @@
 
   <div id="codeViewPanel">
     <div id="codeHeader">
-      <span id="codeFilePath">No file selected</span>
-      <button id="copyCodeBtn" type="button" style="display:none;">Copy</button>
+      <div id="codeBreadcrumb" class="empty">No file selected</div>
+      <button id="copyCodeBtn" type="button" disabled>Copy</button>
     </div>
     <div id="codeBody">
-      <div id="codeEmptyState">Select a file from the tree to view its source</div>
-      <div id="codeScroll">
+      <div id="codeEmptyState">
+        <div class="emoji">🗂️</div>
+        <div>Pick a file from the tree to read its source here.</div>
+      </div>
+      <div id="codeScroll" style="display:none;">
         <div id="lineNumbers"></div>
         <pre id="codePre"><code id="codeContent"></code></pre>
       </div>
@@ -132,7 +166,9 @@
   </div>
 
 <script>
-// ---------- Sites list ----------
+// =====================================================================
+// Sites tab — unchanged from the original working implementation.
+// =====================================================================
 fetch('sites.json')
   .then(r => r.json())
   .then(sites => {
@@ -160,12 +196,24 @@ fetch('sites.json')
     document.getElementById('menuList').innerHTML = `<div id="error">Failed to load sites.json: ${err.message}</div>`;
   });
 
-// ---------- Code tree ----------
+// =====================================================================
+// Code tab
+// =====================================================================
 const BINARY_EXTENSIONS = new Set(['png','jpg','jpeg','gif','webp','ico','bmp','woff','woff2','ttf','eot','otf','pdf','zip','gz','mp4','mp3','wav','mov','avi']);
 const LANG_MAP = { html:'html', htm:'html', css:'css', js:'javascript', jsx:'javascript', ts:'javascript', tsx:'javascript', py:'python', json:'json', md:'markdown', xml:'xml', svg:'xml', yml:'yaml', yaml:'yaml' };
 
 let currentFileContent = '';
 let codeTreeLoaded = false;
+
+// Cache of already-fetched file contents, keyed by path, so revisiting a
+// file (a very common action when browsing source) is instant.
+const fileCache = new Map();
+// Bumped on every openFile call; guards against a slow fetch for an older
+// click landing after a newer one and clobbering what's on screen.
+let openFileToken = 0;
+// Which folder paths are currently expanded, so re-rendering (or future
+// features like search) doesn't silently collapse everything.
+const expandedFolders = new Set();
 
 function extOf(name) {
   return name.includes('.') ? name.split('.').pop().toLowerCase() : '';
@@ -186,12 +234,47 @@ function getFileBadge(name) {
   return map[ext] || { label: '\u2022', color: '#888' };
 }
 
-function setCodeContent(text, lang, copyable) {
-  currentFileContent = copyable ? text : '';
+function renderBreadcrumb(path) {
+  const crumb = document.getElementById('codeBreadcrumb');
+  crumb.classList.remove('empty');
+  crumb.innerHTML = '';
 
-  document.getElementById('codeEmptyState').style.display = 'none';
-  document.getElementById('codeScroll').style.display = 'flex';
-  document.getElementById('copyCodeBtn').style.display = copyable ? '' : 'none';
+  const parts = path.split('/').filter(Boolean);
+  parts.forEach((part, i) => {
+    const isLast = i === parts.length - 1;
+    const span = document.createElement('span');
+    span.className = isLast ? 'crumb-file' : 'crumb-dir';
+    span.textContent = part;
+    crumb.appendChild(span);
+    if (!isLast) {
+      const sep = document.createElement('span');
+      sep.className = 'crumb-sep';
+      sep.textContent = '/';
+      crumb.appendChild(sep);
+    }
+  });
+}
+
+function setCodeStatus(text, isError) {
+  const codeScroll = document.getElementById('codeScroll');
+  const emptyState = document.getElementById('codeEmptyState');
+  codeScroll.style.display = 'none';
+  emptyState.style.display = 'flex';
+  emptyState.innerHTML = `<div class="code-status${isError ? ' error' : ''}">${text}</div>`;
+  currentFileContent = '';
+  document.getElementById('copyCodeBtn').disabled = true;
+  document.getElementById('copyCodeBtn').classList.remove('copied');
+}
+
+function setCodeContent(text, lang, copyable) {
+  const codeScroll = document.getElementById('codeScroll');
+  const emptyState = document.getElementById('codeEmptyState');
+  emptyState.style.display = 'none';
+  codeScroll.style.display = 'flex';
+
+  currentFileContent = copyable ? text : '';
+  document.getElementById('copyCodeBtn').disabled = !copyable;
+  document.getElementById('copyCodeBtn').classList.remove('copied');
 
   const oldCode = document.getElementById('codeContent');
   const pre = oldCode.parentElement;
@@ -210,21 +293,16 @@ function setCodeContent(text, lang, copyable) {
     : '';
 }
 
-// Cache of already-fetched file contents, keyed by path, so revisiting a file
-// (a common action when browsing source) doesn't re-fetch or re-highlight it.
-const fileCache = new Map();
-let openFileToken = 0;
-
 function openFile(node, rowEl) {
   document.querySelectorAll('.tree-file-row').forEach(r => r.classList.remove('active'));
   if (rowEl) rowEl.classList.add('active');
 
-  document.getElementById('codeFilePath').textContent = node.path;
+  renderBreadcrumb(node.path);
   const ext = extOf(node.name);
-  const token = ++openFileToken; // guards against a slow fetch resolving after a newer click
+  const token = ++openFileToken;
 
   if (BINARY_EXTENSIONS.has(ext)) {
-    setCodeContent('Binary file — preview not available.', null, false);
+    setCodeStatus('Binary file — preview not available.', false);
     return;
   }
 
@@ -234,7 +312,7 @@ function openFile(node, rowEl) {
     return;
   }
 
-  setCodeContent('Loading\u2026', null, false);
+  setCodeStatus('Loading…', false);
 
   fetch(node.path)
     .then(r => {
@@ -242,28 +320,25 @@ function openFile(node, rowEl) {
       return r.text();
     })
     .then(text => {
-      if (token !== openFileToken) return; // user already moved on to another file
+      if (token !== openFileToken) return; // a newer click already took over
       const lang = LANG_MAP[ext] || null;
       fileCache.set(node.path, { text, lang });
       setCodeContent(text, lang, true);
     })
     .catch(err => {
       if (token !== openFileToken) return;
-      setCodeContent('Could not load file: ' + err.message, null, false);
+      setCodeStatus('Could not load file: ' + err.message, true);
     });
 }
 
-// Folder paths the user has expanded, preserved across tab switches / re-renders.
-const expandedFolders = new Set();
-
-function renderTree(nodes, container, parentPath) {
+function renderTree(nodes, container, depth, parentPath) {
   nodes.forEach(node => {
+    const nodePath = parentPath + '/' + node.name;
     const row = document.createElement('div');
     row.className = 'tree-row';
+    row.style.paddingLeft = (depth * 16 + 10) + 'px';
 
     if (node.type === 'folder') {
-      const folderPath = (parentPath ? parentPath + '/' : '') + node.name;
-
       const caret = document.createElement('span');
       caret.className = 'tree-caret';
       caret.textContent = '\u25B8';
@@ -277,21 +352,26 @@ function renderTree(nodes, container, parentPath) {
       const childrenWrap = document.createElement('div');
       childrenWrap.className = 'tree-children';
       const childrenInner = document.createElement('div');
+      childrenInner.className = 'tree-children-inner';
       childrenWrap.appendChild(childrenInner);
-      renderTree(node.children, childrenInner, folderPath);
+      renderTree(node.children, childrenInner, depth + 1, nodePath);
 
-      const setOpen = (open) => {
-        childrenWrap.classList.toggle('open', open);
-        caret.classList.toggle('open', open);
-        if (open) expandedFolders.add(folderPath);
-        else expandedFolders.delete(folderPath);
-      };
+      const isExpanded = expandedFolders.has(nodePath);
+      if (isExpanded) {
+        childrenWrap.classList.add('expanded');
+        caret.classList.add('expanded');
+      }
 
       row.addEventListener('click', () => {
-        setOpen(!childrenWrap.classList.contains('open'));
+        const nowExpanded = !childrenWrap.classList.contains('expanded');
+        childrenWrap.classList.toggle('expanded', nowExpanded);
+        caret.classList.toggle('expanded', nowExpanded);
+        if (nowExpanded) {
+          expandedFolders.add(nodePath);
+        } else {
+          expandedFolders.delete(nodePath);
+        }
       });
-
-      if (expandedFolders.has(folderPath)) setOpen(true);
 
       container.appendChild(row);
       container.appendChild(childrenWrap);
@@ -315,16 +395,16 @@ function renderTree(nodes, container, parentPath) {
   });
 }
 
-document.getElementById('copyCodeBtn').addEventListener('click', () => {
+document.getElementById('copyCodeBtn').addEventListener('click', (e) => {
   if (!currentFileContent) return;
-  const btn = document.getElementById('copyCodeBtn');
   navigator.clipboard.writeText(currentFileContent).then(() => {
+    const btn = e.currentTarget;
+    btn.classList.add('copied');
     const original = btn.textContent;
     btn.textContent = 'Copied';
-    btn.disabled = true;
     setTimeout(() => {
+      btn.classList.remove('copied');
       btn.textContent = original;
-      btn.disabled = false;
     }, 1200);
   }).catch(() => {});
 });
@@ -355,10 +435,12 @@ tabCode.addEventListener('click', () => {
   codeViewPanelEl.style.display = 'flex';
 
   if (!codeTreeLoaded) {
+    codeTreeEl.innerHTML = '<div class="code-status" style="padding:10px 15px;">Loading repository tree…</div>';
     fetch('repo-tree.json')
       .then(r => r.json())
       .then(tree => {
-        renderTree(tree, codeTreeEl, '');
+        codeTreeEl.innerHTML = '';
+        renderTree(tree, codeTreeEl, 0, '');
         codeTreeLoaded = true;
       })
       .catch(err => {
