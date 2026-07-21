@@ -4,13 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SimpleSites.RDX</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; }
-
-  .hidden { display: none !important; }
 
   #menu {
     width: 220px;
@@ -40,324 +36,6 @@
     -ms-overflow-style: none;
   }
   #menuList::-webkit-scrollbar, #codeTree::-webkit-scrollbar { display: none; }
-
-  #menu .item { padding: 10px 15px; cursor: pointer; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #menu .item:hover { background: #2a2a2a; }
-  #menu .item.active { background: #333; border-left: 3px solid #4da3ff; }
-
-  .tree-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; color: #fff; font-size: 13px; }
-  .tree-row:hover { background: #2a2a2a; }
-  .tree-file-row.active { background: #333; border-left: 3px solid #4da3ff; }
-  .tree-caret { display: inline-block; width: 10px; color: #888; font-size: 10px; flex-shrink: 0; text-align: center; }
-  .tree-folder-label { flex-shrink: 0; }
-  .tree-file-badge { font-size: 9px; font-weight: 700; flex-shrink: 0; width: 28px; text-align: center; }
-  .tree-file-label { overflow: hidden; text-overflow: ellipsis; }
-
-  #menu.collapsed { width: 40px !important; overflow: hidden; }
-  #menu.collapsed #modeTabs,
-  #menu.collapsed #menuList,
-  #menu.collapsed #codeTree { display: none; }
-
-  #resizer { width: 3px; cursor: ew-resize; background: #1a1a1a; flex-shrink: 0; border-right: 1px solid #fff; }
-  #resizer:hover, #resizer.active { width: 3px; background: #888; }
-
-  #view { flex: 1; }
-  #view iframe { width: 100%; height: 100%; border: none; display: block; }
-  #placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: #888; font-family: sans-serif; }
-  #error { padding: 15px; color: #f66; font-size: 13px; }
-
-  #codeViewPanel { flex: 1; flex-direction: column; background: #1a1a1a; color: #fff; min-width: 0; display: flex; }
-  #codeHeader { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid #333; font-size: 12px; color: #ccc; flex-shrink: 0; }
-  #codeFilePath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #copyCodeBtn { background: #2a2a2a; border: 1px solid #444; color: #ccc; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px; }
-  #copyCodeBtn:hover { background: #333; color: #fff; }
-
-  #codeBody { flex: 1; overflow: hidden; position: relative; }
-  #codeScroll { height: 100%; overflow: auto; display: flex; scrollbar-width: thin; scrollbar-color: #444 #1a1a1a; }
-  #codeScroll::-webkit-scrollbar { width: 10px; height: 10px; }
-  #codeScroll::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
-  #codeScroll::-webkit-scrollbar-track { background: #1a1a1a; }
-
-  #lineNumbers { position: sticky; left: 0; z-index: 2; background: #1a1a1a; color: #6e7681; text-align: right; padding: 12px 10px 12px 16px; user-select: none; flex-shrink: 0; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 20px; white-space: pre; }
-  #codePre { margin: 0; padding: 12px 20px; flex: 1 0 auto; }
-  #codeContent { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 20px; white-space: pre; }
-  .hljs { background: transparent !important; }
-</style>
-</head>
-<body>
-  <div id="menu">
-    <div id="menuHeader">
-      <div id="modeTabs">
-        <button class="tab-btn active-tab" id="tabSites" type="button">Sites</button>
-        <button class="tab-btn" id="tabCode" type="button">Code</button>
-      </div>
-      <button id="collapseBtn" title="Collapse">◀</button>
-    </div>
-    <div id="menuList"></div>
-    <div id="codeTree" class="hidden"></div>
-  </div>
-  <div id="resizer"></div>
-
-  <div id="view"><div id="placeholder">Select a site from the menu</div></div>
-
-  <div id="codeViewPanel" class="hidden">
-    <div id="codeHeader">
-      <span id="codeFilePath">Select a file to view its code</span>
-      <button id="copyCodeBtn" type="button">Copy</button>
-    </div>
-    <div id="codeBody">
-      <div id="codeScroll">
-        <div id="lineNumbers"></div>
-        <pre id="codePre"><code id="codeContent"></code></pre>
-      </div>
-    </div>
-  </div>
-
-<script>
-fetch('sites.json')
-  .then(r => r.json())
-  .then(sites => {
-    const menuList = document.getElementById('menuList');
-    const view = document.getElementById('view');
-
-    if (sites.length === 0) {
-      menuList.innerHTML = '<div id="error">No sites found yet.</div>';
-      return;
-    }
-
-    sites.forEach(site => {
-      const item = document.createElement('div');
-      item.className = 'item';
-      item.textContent = site.name;
-      item.addEventListener('click', () => {
-        document.querySelectorAll('#menuList .item').forEach(el => el.classList.remove('active'));
-        item.classList.add('active');
-        view.innerHTML = `<iframe src="${site.url}"></iframe>`;
-      });
-      menuList.appendChild(item);
-    });
-  })
-  .catch(err => {
-    document.getElementById('menuList').innerHTML = `<div id="error">Failed to load sites.json: ${err.message}</div>`;
-  });
-
-const BINARY_EXTENSIONS = new Set(['png','jpg','jpeg','gif','webp','ico','bmp','woff','woff2','ttf','eot','otf','pdf','zip','gz','mp4','mp3','wav','mov','avi']);
-const LANG_MAP = { html:'html', htm:'html', css:'css', js:'javascript', jsx:'javascript', ts:'javascript', tsx:'javascript', py:'python', json:'json', md:'markdown', xml:'xml', svg:'xml', yml:'yaml', yaml:'yaml' };
-
-let currentFileContent = '';
-let codeTreeLoaded = false;
-
-function extOf(name) {
-  return name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-}
-
-function getFileBadge(name) {
-  const ext = extOf(name);
-  const map = {
-    html: { label: 'HTM', color: '#e37933' },
-    htm:  { label: 'HTM', color: '#e37933' },
-    css:  { label: 'CSS', color: '#4fc1e9' },
-    js:   { label: 'JS',  color: '#e8d44d' },
-    jsx:  { label: 'JSX', color: '#e8d44d' },
-    py:   { label: 'PY',  color: '#3ea6ff' },
-    json: { label: '{ }', color: '#cbcb41' },
-    md:   { label: 'MD',  color: '#8a9eb0' }
-  };
-  return map[ext] || { label: '\u2022', color: '#888' };
-}
-
-function setCodeContent(text, lang, copyable) {
-  currentFileContent = copyable ? text : '';
-  const oldCode = document.getElementById('codeContent');
-  const pre = oldCode.parentElement;
-  const fresh = document.createElement('code');
-  fresh.id = 'codeContent';
-  fresh.textContent = text;
-  if (lang) fresh.className = 'language-' + lang;
-  pre.replaceChild(fresh, oldCode);
-
-  if (lang && window.hljs) {
-    hljs.highlightElement(fresh);
-  }
-
-  document.getElementById('lineNumbers').textContent = copyable
-    ? text.split('\n').map((_, i) => i + 1).join('\n')
-    : '';
-}
-
-function openFile(node, rowEl) {
-  document.querySelectorAll('.tree-file-row').forEach(r => r.classList.remove('active'));
-  if (rowEl) rowEl.classList.add('active');
-
-  document.getElementById('codeFilePath').textContent = node.path;
-  const ext = extOf(node.name);
-
-  if (BINARY_EXTENSIONS.has(ext)) {
-    setCodeContent('Binary file — preview not available.', null, false);
-    return;
-  }
-
-  fetch(node.path)
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
-    })
-    .then(text => setCodeContent(text, LANG_MAP[ext] || null, true))
-    .catch(err => setCodeContent('Could not load file: ' + err.message, null, false));
-}
-
-function renderTree(nodes, container, depth) {
-  if (nodes.length === 0 && depth === 0) {
-    container.innerHTML = '<div id="error">No files found.</div>';
-    return;
-  }
-  nodes.forEach(node => {
-    const row = document.createElement('div');
-    row.className = 'tree-row';
-    row.style.paddingLeft = (depth * 16 + 10) + 'px';
-
-    if (node.type === 'folder') {
-      const caret = document.createElement('span');
-      caret.className = 'tree-caret';
-      caret.textContent = '\u25B8';
-      row.appendChild(caret);
-
-      const label = document.createElement('span');
-      label.className = 'tree-folder-label';
-      label.textContent = node.name;
-      row.appendChild(label);
-
-      const childrenWrap = document.createElement('div');
-      childrenWrap.style.display = 'none';
-      renderTree(node.children, childrenWrap, depth + 1);
-
-      row.addEventListener('click', () => {
-        const isOpen = childrenWrap.style.display !== 'none';
-        childrenWrap.style.display = isOpen ? 'none' : 'block';
-        caret.textContent = isOpen ? '\u25B8' : '\u25BE';
-      });
-
-      container.appendChild(row);
-      container.appendChild(childrenWrap);
-    } else {
-      const info = getFileBadge(node.name);
-      const badge = document.createElement('span');
-      badge.className = 'tree-file-badge';
-      badge.textContent = info.label;
-      badge.style.color = info.color;
-      row.appendChild(badge);
-
-      const label = document.createElement('span');
-      label.className = 'tree-file-label';
-      label.textContent = node.name;
-      row.appendChild(label);
-
-      row.classList.add('tree-file-row');
-      row.addEventListener('click', () => openFile(node, row));
-      container.appendChild(row);
-    }
-  });
-}
-
-document.getElementById('copyCodeBtn').addEventListener('click', () => {
-  if (!currentFileContent) return;
-  navigator.clipboard.writeText(currentFileContent).catch(() => {});
-});
-
-const tabSites = document.getElementById('tabSites');
-const tabCode = document.getElementById('tabCode');
-const menuListEl = document.getElementById('menuList');
-const codeTreeEl = document.getElementById('codeTree');
-const viewEl = document.getElementById('view');
-const codeViewPanelEl = document.getElementById('codeViewPanel');
-
-tabSites.addEventListener('click', () => {
-  tabSites.classList.add('active-tab');
-  tabCode.classList.remove('active-tab');
-  menuListEl.classList.remove('hidden');
-  codeTreeEl.classList.add('hidden');
-  viewEl.classList.remove('hidden');
-  codeViewPanelEl.classList.add('hidden');
-});
-
-tabCode.addEventListener('click', () => {
-  tabCode.classList.add('active-tab');
-  tabSites.classList.remove('active-tab');
-  menuListEl.classList.add('hidden');
-  codeTreeEl.classList.remove('hidden');
-  viewEl.classList.add('hidden');
-  codeViewPanelEl.classList.remove('hidden');
-
-  if (!codeTreeLoaded) {
-    fetch('repo-tree.json')
-      .then(r => r.json())
-      .then(tree => {
-        renderTree(tree, codeTreeEl, 0);
-        codeTreeLoaded = true;
-      })
-      .catch(err => {
-        codeTreeEl.innerHTML = `<div id="error">Could not load repo-tree.json: ${err.message}</div>`;
-      });
-  }
-});
-
-const resizer = document.getElementById('resizer');
-const menu = document.getElementById('menu');
-const collapseBtn = document.getElementById('collapseBtn');
-let isResizing = false;
-let lastWidth = 220;
-
-function setArrow(collapsed) {
-  collapseBtn.textContent = collapsed ? '\u25B6' : '\u25C0';
-}
-
-resizer.addEventListener('mousedown', () => {
-  isResizing = true;
-  menu.classList.add('resizing');
-  resizer.classList.add('active');
-  document.body.style.userSelect = 'none';
-});
-
-document.addEventListener('mousemove', (e) => {
-  if (!isResizing) return;
-  let newWidth = e.clientX;
-  if (newWidth < 40) newWidth = 40;
-  if (newWidth > 500) newWidth = 500;
-  menu.style.width = newWidth + 'px';
-  const collapsed = newWidth <= 60;
-  menu.classList.toggle('collapsed', collapsed);
-  setArrow(collapsed);
-});
-
-document.addEventListener('mouseup', () => {
-  if (isResizing) {
-    isResizing = false;
-    menu.classList.remove('resizing');
-    resizer.classList.remove('active');
-    document.body.style.userSelect = '';
-    if (menu.offsetWidth > 60) lastWidth = menu.offsetWidth;
-  }
-});
-
-collapseBtn.addEventListener('click', () => {
-  const collapsed = menu.classList.contains('collapsed');
-  if (collapsed) {
-    menu.classList.remove('collapsed');
-    menu.style.width = lastWidth + 'px';
-    setArrow(false);
-  } else {
-    lastWidth = menu.offsetWidth > 60 ? menu.offsetWidth : lastWidth;
-    menu.classList.add('collapsed');
-    menu.style.width = '40px';
-    setArrow(true);
-  }
-});
-</script>
-</body>
-</html>    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  #menuList::-webkit-scrollbar, #codeTree::-webkit-scrollbar { display: none; }
   #codeTree { display: none; }
 
   #menu .item { padding: 10px 15px; cursor: pointer; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -366,11 +44,18 @@ collapseBtn.addEventListener('click', () => {
 
   .tree-row { display: flex; align-items: center; gap: 6px; padding: 5px 10px; cursor: pointer; white-space: nowrap; overflow: hidden; color: #fff; font-size: 13px; }
   .tree-row:hover { background: #2a2a2a; }
+  .tree-row:focus-visible { outline: 1px solid #4da3ff; outline-offset: -1px; }
   .tree-file-row.active { background: #333; border-left: 3px solid #4da3ff; }
-  .tree-caret { display: inline-block; width: 10px; color: #888; font-size: 10px; flex-shrink: 0; text-align: center; }
-  .tree-folder-label { flex-shrink: 0; }
-  .tree-file-badge { font-size: 9px; font-weight: 700; flex-shrink: 0; width: 28px; text-align: center; }
+  .tree-file-row.active:hover { background: #333; }
+  .tree-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; flex-shrink: 0; }
+  .tree-caret { display: inline-block; color: #888; font-size: 10px; transition: transform 0.15s ease; }
+  .tree-row.expanded .tree-caret { transform: rotate(90deg); }
+  .tree-folder-label { flex-shrink: 0; font-weight: 600; }
+  .tree-file-badge { font-size: 9px; font-weight: 700; text-align: center; }
   .tree-file-label { overflow: hidden; text-overflow: ellipsis; }
+  .tree-children { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.15s ease; }
+  .tree-children.expanded { grid-template-rows: 1fr; }
+  .tree-children-inner { overflow: hidden; min-height: 0; }
 
   #menu.collapsed { width: 40px !important; overflow: hidden; }
   #menu.collapsed #modeTabs,
@@ -390,8 +75,10 @@ collapseBtn.addEventListener('click', () => {
   #codeFilePath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #copyCodeBtn { background: #2a2a2a; border: 1px solid #444; color: #ccc; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px; }
   #copyCodeBtn:hover { background: #333; color: #fff; }
+  #copyCodeBtn:disabled { opacity: 0.45; cursor: default; }
 
   #codeBody { flex: 1; overflow: hidden; position: relative; }
+  #codePlaceholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #888; font-family: sans-serif; padding: 20px; text-align: center; }
   #codeScroll { height: 100%; overflow: auto; display: flex; scrollbar-width: thin; scrollbar-color: #444 #1a1a1a; }
   #codeScroll::-webkit-scrollbar { width: 10px; height: 10px; }
   #codeScroll::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
@@ -425,6 +112,7 @@ collapseBtn.addEventListener('click', () => {
       <button id="copyCodeBtn" type="button">Copy</button>
     </div>
     <div id="codeBody">
+      <div id="codePlaceholder">Select a file from the tree to view its source.</div>
       <div id="codeScroll">
         <div id="lineNumbers"></div>
         <pre id="codePre"><code id="codeContent"></code></pre>
@@ -463,7 +151,30 @@ fetch('sites.json')
 
 // ---------- Code tree ----------
 const BINARY_EXTENSIONS = new Set(['png','jpg','jpeg','gif','webp','ico','bmp','woff','woff2','ttf','eot','otf','pdf','zip','gz','mp4','mp3','wav','mov','avi']);
-const LANG_MAP = { html:'html', htm:'html', css:'css', js:'javascript', jsx:'javascript', ts:'javascript', tsx:'javascript', py:'python', json:'json', md:'markdown', xml:'xml', svg:'xml', yml:'yaml', yaml:'yaml' };
+
+// One entry per extension: badge label/color for the tree AND the highlight.js
+// language for the viewer. These used to be two separate maps that had quietly
+// drifted apart (ts/tsx/xml/svg/yml/yaml had a highlight language but no badge,
+// so they fell back to a generic gray dot). A single table makes that impossible.
+const FILE_TYPES = {
+  html: { label: 'HTM', color: '#e37933', lang: 'html' },
+  htm:  { label: 'HTM', color: '#e37933', lang: 'html' },
+  css:  { label: 'CSS', color: '#4fc1e9', lang: 'css' },
+  js:   { label: 'JS',  color: '#e8d44d', lang: 'javascript' },
+  jsx:  { label: 'JSX', color: '#e8d44d', lang: 'javascript' },
+  ts:   { label: 'TS',  color: '#3178c6', lang: 'javascript' },
+  tsx:  { label: 'TSX', color: '#3178c6', lang: 'javascript' },
+  py:   { label: 'PY',  color: '#3ea6ff', lang: 'python' },
+  json: { label: '{ }', color: '#cbcb41', lang: 'json' },
+  md:   { label: 'MD',  color: '#8a9eb0', lang: 'markdown' },
+  xml:  { label: 'XML', color: '#e37933', lang: 'xml' },
+  svg:  { label: 'SVG', color: '#e37933', lang: 'xml' },
+  yml:  { label: 'YML', color: '#cb904d', lang: 'yaml' },
+  yaml: { label: 'YML', color: '#cb904d', lang: 'yaml' },
+  sh:   { label: 'SH',  color: '#8fd14f', lang: 'bash' },
+  txt:  { label: 'TXT', color: '#888',    lang: null }
+};
+const DEFAULT_FILE_TYPE = { label: '\u2022', color: '#888', lang: null };
 
 let currentFileContent = '';
 let codeTreeLoaded = false;
@@ -472,20 +183,36 @@ function extOf(name) {
   return name.includes('.') ? name.split('.').pop().toLowerCase() : '';
 }
 
-function getFileBadge(name) {
-  const ext = extOf(name);
-  const map = {
-    html: { label: 'HTM', color: '#e37933' },
-    htm:  { label: 'HTM', color: '#e37933' },
-    css:  { label: 'CSS', color: '#4fc1e9' },
-    js:   { label: 'JS',  color: '#e8d44d' },
-    jsx:  { label: 'JSX', color: '#e8d44d' },
-    py:   { label: 'PY',  color: '#3ea6ff' },
-    json: { label: '{ }', color: '#cbcb41' },
-    md:   { label: 'MD',  color: '#8a9eb0' }
-  };
-  return map[ext] || { label: '\u2022', color: '#888' };
+function getFileType(name) {
+  return FILE_TYPES[extOf(name)] || DEFAULT_FILE_TYPE;
 }
+
+// highlight.js (script + stylesheet) is only needed once someone opens the Code
+// tab, so it's loaded on demand instead of unconditionally in <head> — visitors
+// who only browse the Sites tab never pay for it.
+let hljsReadyPromise = null;
+function ensureHighlighter() {
+  if (hljsReadyPromise) return hljsReadyPromise;
+  hljsReadyPromise = new Promise(resolve => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+  return hljsReadyPromise;
+}
+
+const fileCache = new Map();
+let openRequestToken = 0;
+const copyCodeBtn = document.getElementById('copyCodeBtn');
+const codePlaceholderEl = document.getElementById('codePlaceholder');
+let copyResetTimer = null;
 
 function setCodeContent(text, lang, copyable) {
   currentFileContent = copyable ? text : '';
@@ -497,47 +224,82 @@ function setCodeContent(text, lang, copyable) {
   if (lang) fresh.className = 'language-' + lang;
   pre.replaceChild(fresh, oldCode);
 
-  if (lang && window.hljs) {
-    hljs.highlightElement(fresh);
-  }
-
   document.getElementById('lineNumbers').textContent = copyable
     ? text.split('\n').map((_, i) => i + 1).join('\n')
     : '';
+
+  clearTimeout(copyResetTimer);
+  copyCodeBtn.textContent = 'Copy';
+  copyCodeBtn.disabled = !copyable;
+
+  return fresh;
+}
+
+function highlight(codeEl, lang, token) {
+  if (!lang) return;
+  ensureHighlighter().then(ready => {
+    if (!ready || token !== openRequestToken) return; // a newer file was opened meanwhile
+    hljs.highlightElement(codeEl);
+  });
 }
 
 function openFile(node, rowEl) {
+  codePlaceholderEl.style.display = 'none';
   document.querySelectorAll('.tree-file-row').forEach(r => r.classList.remove('active'));
   if (rowEl) rowEl.classList.add('active');
-
   document.getElementById('codeFilePath').textContent = node.path;
+
+  const token = ++openRequestToken;
   const ext = extOf(node.name);
+  const lang = getFileType(node.name).lang;
 
   if (BINARY_EXTENSIONS.has(ext)) {
     setCodeContent('Binary file — preview not available.', null, false);
     return;
   }
 
+  if (fileCache.has(node.path)) {
+    highlight(setCodeContent(fileCache.get(node.path), lang, true), lang, token);
+    return;
+  }
+
+  setCodeContent('Loading\u2026', null, false);
+
   fetch(node.path)
     .then(r => {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.text();
     })
-    .then(text => setCodeContent(text, LANG_MAP[ext] || null, true))
-    .catch(err => setCodeContent('Could not load file: ' + err.message, null, false));
+    .then(text => {
+      if (token !== openRequestToken) return; // a newer file was opened meanwhile
+      fileCache.set(node.path, text);
+      highlight(setCodeContent(text, lang, true), lang, token);
+    })
+    .catch(err => {
+      if (token !== openRequestToken) return;
+      setCodeContent('Could not load file: ' + err.message, null, false);
+    });
 }
 
 function renderTree(nodes, container, depth) {
+  const fragment = document.createDocumentFragment();
+
   nodes.forEach(node => {
     const row = document.createElement('div');
     row.className = 'tree-row';
     row.style.paddingLeft = (depth * 16 + 10) + 'px';
+    row.tabIndex = 0;
+    row.setAttribute('role', 'button');
+
+    const icon = document.createElement('span');
+    icon.className = 'tree-icon';
 
     if (node.type === 'folder') {
       const caret = document.createElement('span');
       caret.className = 'tree-caret';
       caret.textContent = '\u25B8';
-      row.appendChild(caret);
+      icon.appendChild(caret);
+      row.appendChild(icon);
 
       const label = document.createElement('span');
       label.className = 'tree-folder-label';
@@ -545,24 +307,37 @@ function renderTree(nodes, container, depth) {
       row.appendChild(label);
 
       const childrenWrap = document.createElement('div');
-      childrenWrap.style.display = 'none';
-      renderTree(node.children, childrenWrap, depth + 1);
+      childrenWrap.className = 'tree-children';
+      const childrenInner = document.createElement('div');
+      childrenInner.className = 'tree-children-inner';
+      childrenWrap.appendChild(childrenInner);
+      renderTree(node.children, childrenInner, depth + 1);
 
-      row.addEventListener('click', () => {
-        const isOpen = childrenWrap.style.display !== 'none';
-        childrenWrap.style.display = isOpen ? 'none' : 'block';
-        caret.textContent = isOpen ? '\u25B8' : '\u25BE';
+      row.setAttribute('aria-expanded', 'false');
+
+      const toggle = () => {
+        const isOpen = row.classList.toggle('expanded');
+        childrenWrap.classList.toggle('expanded', isOpen);
+        row.setAttribute('aria-expanded', String(isOpen));
+      };
+      row.addEventListener('click', toggle);
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
       });
 
-      container.appendChild(row);
-      container.appendChild(childrenWrap);
+      fragment.appendChild(row);
+      fragment.appendChild(childrenWrap);
     } else {
-      const info = getFileBadge(node.name);
+      const info = getFileType(node.name);
       const badge = document.createElement('span');
       badge.className = 'tree-file-badge';
       badge.textContent = info.label;
       badge.style.color = info.color;
-      row.appendChild(badge);
+      icon.appendChild(badge);
+      row.appendChild(icon);
 
       const label = document.createElement('span');
       label.className = 'tree-file-label';
@@ -571,15 +346,35 @@ function renderTree(nodes, container, depth) {
 
       row.classList.add('tree-file-row');
       row.addEventListener('click', () => openFile(node, row));
-      container.appendChild(row);
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openFile(node, row);
+        }
+      });
+
+      fragment.appendChild(row);
     }
   });
+
+  container.appendChild(fragment);
 }
 
-document.getElementById('copyCodeBtn').addEventListener('click', () => {
+copyCodeBtn.addEventListener('click', () => {
   if (!currentFileContent) return;
-  navigator.clipboard.writeText(currentFileContent).catch(() => {});
+  navigator.clipboard.writeText(currentFileContent)
+    .then(() => flashCopyButton('Copied!'))
+    .catch(() => flashCopyButton('Failed'));
 });
+
+function flashCopyButton(label) {
+  clearTimeout(copyResetTimer);
+  copyCodeBtn.textContent = label;
+  copyResetTimer = setTimeout(() => {
+    copyCodeBtn.textContent = 'Copy';
+    copyCodeBtn.disabled = !currentFileContent;
+  }, 1200);
+}
 
 // ---------- Mode switching (Sites <-> Code) ----------
 const tabSites = document.getElementById('tabSites');
@@ -605,6 +400,8 @@ tabCode.addEventListener('click', () => {
   codeTreeEl.style.display = '';
   viewEl.style.display = 'none';
   codeViewPanelEl.style.display = 'flex';
+
+  ensureHighlighter(); // kick off (or reuse) the syntax highlighter load in the background
 
   if (!codeTreeLoaded) {
     fetch('repo-tree.json')
