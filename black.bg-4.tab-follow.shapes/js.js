@@ -2,6 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const navBtns = document.querySelectorAll('.nav-btn');
     const pages = document.querySelectorAll('.page');
     const b = document.body;
+    const SHAPE_COUNT = 20;
+    const TYPES = ['circle', 'triangle', 'square'];
+    const MAX_PULL = 0.04;
+    const GEL_STR = 0.05;
+    let shapes = [], mouse = {x: innerWidth / 2, y: innerHeight / 2};
+    let nOff = 0;
     navBtns.forEach(btn => btn.addEventListener('click', (e) => {
         const targetId = e.currentTarget.dataset.target;
         navBtns.forEach(b => b.classList.remove('active'));
@@ -9,11 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.currentTarget.classList.add('active');
         document.getElementById(targetId)?.classList.add('active');
     }));
-
-    const SHAPE_COUNT = 20;
-    const TYPES = ['circle', 'triangle', 'square'];
     const BAND_WIDTH = innerWidth * 0.3;
-    let shapes = [];
     for (let i = 0; i < SHAPE_COUNT; i++) {
         const type = TYPES[i % 3];
         const el = document.createElement('div');
@@ -22,22 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const ix = isLeft 
             ? Math.random() * BAND_WIDTH 
             : (innerWidth - BAND_WIDTH) + Math.random() * BAND_WIDTH; 
+
         const iy = Math.random() * innerHeight; 
         el.style.left = `${ix}px`;
         el.style.top = `${iy}px`;
         b.appendChild(el);
         shapes.push({el, ix, iy, cx: 0, cy: 0, ns: Math.random() * 100});
     }
-
-    let nOff = 0;
-    const MAX_PULL = 0.04;
-    const GEL_STR = 0.05;
-    let mouse = { x: innerWidth / 2, y: innerHeight / 2 };
-
-    document.addEventListener('mousemove', (e) => {
-        mouse.x = e.clientX;
-        mouse.y = e.clientY;
-    });
+    document.addEventListener('mousemove', (e) => {mouse.x = e.clientX; mouse.y = e.clientY;});
     function animate() {
         nOff += GEL_STR;
         shapes.forEach(s => {
@@ -51,10 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const pullY = dY * influence * 0.2;
             s.cx += (gX + pullX - s.cx) * MAX_PULL;
             s.cy += (gY + pullY - s.cy) * MAX_PULL;
+
             s.el.style.transform = `translate(${s.cx}px, ${s.cy}px)`;
         });
         requestAnimationFrame(animate);
     }
     animate();
 });
-```[cite: 3]
