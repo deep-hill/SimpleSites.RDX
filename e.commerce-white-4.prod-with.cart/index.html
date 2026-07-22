@@ -78,7 +78,6 @@
       border-radius: 6px;
     }
 
-    /* Cart Drawer & Checkout Modal */
     .drawer {
       position: fixed;
       right: -360px;
@@ -133,10 +132,10 @@
 <body>
 
   <header>
-    <h2>⚡ SwiftCart</h2>
+    <h2>SwiftCart</h2>
     <input type="search" placeholder="Search products..." oninput="render(this.value)">
     <button class="btn" style="width: auto; margin: 0;" onclick="toggleCart()">
-      🛒 Cart (<span id="cart-count">0</span>)
+      Cart (<span id="cart-count">0</span>)
     </button>
   </header>
 
@@ -168,10 +167,10 @@
 
   <script>
     const products = [
-      { id: 1, name: "Headphones", price: 99, img: "" },
-      { id: 2, name: "Watch", price: 149, img: "" },
-      { id: 3, name: "Mouse", price: 49, img: "" },
-      { id: 4, name: "Keyboard", price: 120, img: "" }
+      { id: 1, name: "Product 1", price: 99, img: "" },
+      { id: 2, name: "Product 2", price: 149, img: "" },
+      { id: 3, name: "Product 3", price: 49, img: "" },
+      { id: 4, name: "Product 4", price: 120, img: "" }
     ];
     let cart = [];
     function render(filter = "") {
